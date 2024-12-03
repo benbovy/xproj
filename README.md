@@ -1,2 +1,3 @@
-# xproj
-Xarray extension for projections and coordinate reference systems
+# XProj
+
+Xarray extension for projections and coordinate reference systems.
