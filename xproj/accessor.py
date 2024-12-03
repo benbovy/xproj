@@ -168,6 +168,6 @@ class _ProjAccessor:
                     f"coordinate {name!r} already has an index. "
                     "Specify 'allow_override=True' to allow replacing it."
                 )
-            _obj = _obj.drop_indexes(name).set_xindex(str(name), CRSIndex, crs=crs)
+            _obj = _obj.drop_indexes(name, errors="ignore").set_xindex(str(name), CRSIndex, crs=crs)
 
         return _obj

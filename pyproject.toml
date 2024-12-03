@@ -51,6 +51,7 @@ exclude = [
   "build",
   "dist",
   "__pycache__",
+  "examples",
 ]
 line-length = 100
 
