@@ -138,6 +138,17 @@ class ProjAccessor:
 
         return CRSAccessor(self._obj, coord_name, self.crs_indexes[coord_name])
 
+    def assert_single_crs(self):
+        """Raise an `AssertionError` if no or multiple CRS-indexed coordinates
+        are found in the Dataset or DataArray.
+        """
+        if len(self.crs_indexes) != 1:
+            if not self.crs_indexes:
+                msg = "no CRS found in Dataset or DataArray"
+            else:
+                msg = "multiple CRS found in Dataset or DataArray"
+            raise AssertionError(msg)
+
     @property
     def _crs_index(self) -> CRSIndex | None:
         # return a CRSIndex if only one instance is found in Dataset or DataArray
@@ -147,8 +158,7 @@ class ProjAccessor:
         if len(indexes) > 1:
             raise ValueError(
                 "found multiple coordinates with a CRSIndex in Dataset or DataArray. "
-                "Use instead `.proj('coord_name')` to use this accessor with a selected "
-                "spatial reference coordinate."
+                "Use instead `.proj('coord_name')` to a select a spatial reference coordinate."
             )
         elif len(indexes) == 1:
             return next(iter(indexes.values()))
