@@ -119,7 +119,7 @@ class ProjAccessor:
         Parameter
         ---------
         coord_name : Hashable
-            The name of the (scalar) spatial reference coordinate. The latter
+            The name of a (scalar) spatial reference coordinate, which
             must have a CRSIndex.
 
         Returns
@@ -145,7 +145,11 @@ class ProjAccessor:
         # raise an error if multiple instances are found
         indexes = self.crs_indexes
         if len(indexes) > 1:
-            raise ValueError("found multiple coordinates with a CRSIndex in Dataset or DataArray")
+            raise ValueError(
+                "found multiple coordinates with a CRSIndex in Dataset or DataArray. "
+                "Use instead `.proj('coord_name')` to use this accessor with a selected "
+                "spatial reference coordinate."
+            )
         elif len(indexes) == 1:
             return next(iter(indexes.values()))
         else:
