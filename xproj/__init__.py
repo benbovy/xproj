@@ -1,6 +1,6 @@
 from importlib.metadata import PackageNotFoundError, version
 
-from .accessor import _ProjAccessor  # noqa: F401
+from .accessor import ProjAccessor as _ProjAccessor  # noqa: F401
 from .index import CRSIndex  # noqa: F401
 
 __all__ = ["_ProjAccessor", "CRSIndex"]
