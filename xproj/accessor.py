@@ -128,6 +128,16 @@ class ProjAccessor:
             A Xarray Dataset or DataArray accessor for a single CRS.
 
         """
+        # TODO: only one CRS per Dataset / DataArray -> maybe remove this restriction later
+        # (https://github.com/benbovy/xproj/issues/2)
+        try:
+            self.assert_single_crs()
+        except AssertionError:
+            raise ValueError(
+                "found multiple coordinates with a CRSIndex in Dataset or DataArray "
+                "(currently not supported)."
+            )
+
         if coord_name not in self.crs_indexes:
             if coord_name not in self._obj.coords:
                 raise KeyError(f"no coordinate {coord_name!r} found in Dataset or DataArray")
@@ -208,6 +218,8 @@ class ProjAccessor:
         """
         coord_name_crs = either_dict_or_kwargs(coord_name_crs, coord_name_crs_kwargs, "set_crs")
 
+        # TODO: only one CRS per Dataset / DataArray -> maybe remove this restriction later
+        # (https://github.com/benbovy/xproj/issues/2)
         if len(coord_name_crs) > 1:
             raise ValueError("setting multiple CRSs is currently not supported.")
 
