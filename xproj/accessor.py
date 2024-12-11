@@ -61,28 +61,41 @@ def get_crs_indexes(
                 coord_name = next(iter(vars))
                 crs_indexes[coord_name] = idx
 
-        if len(crs_indexes) > 1:
-            raise ValueError(
-                "found more than one coordinate with a CRSIndex in Dataset or DataArray "
-                "(currently not supported)"
-            )
-
         return crs_indexes
+
+
+class CRSAccessor:
+    """Xarray extension entry-point for a single CRS."""
+
+    _obj: xr.Dataset | xr.DataArray
+    _crs_coord_name: Hashable
+    _crs_index: CRSIndex
+
+    def __init__(self, obj: xr.Dataset | xr.DataArray, coord_name: Hashable, index: CRSIndex):
+        self._obj = obj
+
+        # crs_indexes = get_crs_indexes(obj, coord_name=coord_name)
+        # assert len(crs_indexes) == 1
+        self._crs_coord_name = coord_name
+        self._crs_index = index
+
+    @property
+    def crs(self) -> pyproj.CRS:
+        """Return the coordinate reference system as a :class:`pyproj.CRS` object."""
+        return self._crs_index.crs
 
 
 @xr.register_dataset_accessor("proj")
 @xr.register_dataarray_accessor("proj")
-class _ProjAccessor:
+class ProjAccessor:
     """Xarray `.proj` extension entry-point."""
 
     _obj: xr.Dataset | xr.DataArray
     _crs_indexes = dict[Hashable, CRSIndex] | None
 
-    def __init__(
-        self, obj: xr.Dataset | xr.DataArray, crs_indexes: dict[Hashable, CRSIndex] | None = None
-    ):
+    def __init__(self, obj: xr.Dataset | xr.DataArray):
         self._obj = obj
-        self._crs_indexes = crs_indexes
+        self._crs_indexes = None
 
     @property
     def crs_indexes(self) -> Frozen[Hashable, CRSIndex]:
@@ -100,30 +113,80 @@ class _ProjAccessor:
             self._crs_indexes = get_crs_indexes(self._obj)
         return FrozenDict(self._crs_indexes)
 
-    def __call__(self, coord_name: Hashable | None = None):
-        # So we can use the extension by passing a coordinate name,
-        # e.g., `ds.proj("spatial_ref").crs`
-        # -> slightly faster than parsing all coordinates and their indexes
-        # -> useful in case users want to write more explicit & readable code
-        # -> may be useful if we eventually allow multiple CRSs per Dataset or DataArray
-        if coord_name is None:
-            return self
+    def __call__(self, coord_name: Hashable):
+        """Select a given CRS by coordinate name.
+
+        Parameter
+        ---------
+        coord_name : Hashable
+            The name of a (scalar) spatial reference coordinate, which
+            must have a CRSIndex.
+
+        Returns
+        -------
+        crs_accessor
+            A Xarray Dataset or DataArray accessor for a single CRS.
+
+        """
+        # TODO: only one CRS per Dataset / DataArray -> maybe remove this restriction later
+        # (https://github.com/benbovy/xproj/issues/2)
+        try:
+            self.assert_single_crs()
+        except AssertionError:
+            raise ValueError(
+                "found multiple coordinates with a CRSIndex in Dataset or DataArray "
+                "(currently not supported)."
+            )
+
+        if coord_name not in self.crs_indexes:
+            if coord_name not in self._obj.coords:
+                raise KeyError(f"no coordinate {coord_name!r} found in Dataset or DataArray")
+            elif coord_name not in self._obj.xindexes:
+                raise ValueError(f"coordinate {coord_name!r} has no index")
+            else:
+                raise ValueError(f"coordinate {coord_name!r} index is not a CRSIndex")
+
+        return CRSAccessor(self._obj, coord_name, self.crs_indexes[coord_name])
+
+    def assert_single_crs(self):
+        """Raise an `AssertionError` if no or multiple CRS-indexed coordinates
+        are found in the Dataset or DataArray.
+        """
+        if len(self.crs_indexes) != 1:
+            if not self.crs_indexes:
+                msg = "no CRS found in Dataset or DataArray"
+            else:
+                msg = "multiple CRS found in Dataset or DataArray"
+            raise AssertionError(msg)
+
+    @property
+    def _crs_index(self) -> CRSIndex | None:
+        # return a CRSIndex if only one instance is found in Dataset or DataArray
+        # return None if no such instance is found
+        # raise an error if multiple instances are found
+        indexes = self.crs_indexes
+        if len(indexes) > 1:
+            raise ValueError(
+                "found multiple coordinates with a CRSIndex in Dataset or DataArray. "
+                "Use instead `.proj('coord_name')` to a select a spatial reference coordinate."
+            )
+        elif len(indexes) == 1:
+            return next(iter(indexes.values()))
         else:
-            crs_indexes = get_crs_indexes(self._obj, coord_name=coord_name)
-            return _ProjAccessor(self._obj, crs_indexes=crs_indexes)
+            return None
 
     @property
     def crs(self) -> pyproj.CRS | None:
         """Return the coordinate reference system as a :class:`pyproj.CRS`
-        object, or `None` if there isn't any.
+        object, or ``None`` if there isn't any.
 
         """
-        indexes = self.crs_indexes
-        if not indexes:
+        crs_index = self._crs_index
+
+        if crs_index is None:
             return None
         else:
-            index = next(iter(indexes.values()))
-            return index.crs
+            return crs_index.crs
 
     def set_crs(
         self,
@@ -155,6 +218,8 @@ class _ProjAccessor:
         """
         coord_name_crs = either_dict_or_kwargs(coord_name_crs, coord_name_crs_kwargs, "set_crs")
 
+        # TODO: only one CRS per Dataset / DataArray -> maybe remove this restriction later
+        # (https://github.com/benbovy/xproj/issues/2)
         if len(coord_name_crs) > 1:
             raise ValueError("setting multiple CRSs is currently not supported.")
 
