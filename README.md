@@ -33,4 +33,7 @@ See the notebooks in the "examples" folder.
   GeoParquet, etc.).
 - Provide a common set of tools (implementations) for re-projecting data. This
   highly depends on the data type (i.e., raster, vector, etc.) or application
-  and it is best handled by other Xarray extensions.
+  and it is best handled by other Xarray extensions. We also see XProj
+  potentially as a lightweight dependency common to those other extensions so we
+  want to restrict XProj's dependencies to the minimum (i.e., Xarray and
+  PyProj).
