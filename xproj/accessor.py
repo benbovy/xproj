@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Hashable, Mapping
-from typing import Any, cast
+from typing import Any, TypeVar, cast
 
 import pyproj
 import xarray as xr
@@ -62,6 +62,52 @@ def get_crs_indexes(
                 crs_indexes[coord_name] = idx
 
         return crs_indexes
+
+
+class GeoAccessorRegistry:
+    """A registry of 3rd-party geospatial Xarray accessors."""
+
+    _accessor_names: dict[type[xr.Dataset] | type[xr.DataArray], set[str]] = {
+        xr.Dataset: set(),
+        xr.DataArray: set(),
+    }
+
+    @classmethod
+    def register_accessor(cls, accessor_cls: Any):
+        accessor_names = {}
+
+        for xr_cls in (xr.Dataset, xr.DataArray):
+            accessor_names[xr_cls] = {n for n in dir(xr_cls) if getattr(xr_cls, n) is accessor_cls}
+
+        if not accessor_names:
+            raise KeyError(
+                f"class {accessor_cls.__name__} is not an Xarray Dataset or DataArray "
+                "accessor decorated class"
+            )
+
+        for xr_cls, names in accessor_names.items():
+            cls._accessor_names[xr_cls].update(names)
+
+    @classmethod
+    def get_accessors(cls, xr_obj: xr.Dataset | xr.DataArray) -> list[Any]:
+        accessors = []
+
+        for name in cls._accessor_names[type(xr_obj)]:
+            accessor_obj = getattr(xr_obj, name, None)
+            if accessor_obj is not None and not isinstance(accessor_obj, xr.DataArray):
+                accessors.append(accessor_obj)
+
+        return accessors
+
+
+T_AccessorClass = TypeVar("T_AccessorClass")
+
+
+def register_geoaccessor(accessor_cls: T_AccessorClass) -> T_AccessorClass:
+    """Register a geospatial, CRS-dependent Xarray (Dataset and/or DataArray) accessor."""
+
+    GeoAccessorRegistry.register_accessor(accessor_cls)
+    return accessor_cls
 
 
 class CRSAccessor:
@@ -234,5 +280,9 @@ class ProjAccessor:
                     "Specify 'allow_override=True' to allow replacing it."
                 )
             _obj = _obj.drop_indexes(name, errors="ignore").set_xindex(str(name), CRSIndex, crs=crs)
+
+            for accessor_obj in GeoAccessorRegistry.get_accessors(_obj):
+                if hasattr(accessor_obj, "__proj_set_crs__"):
+                    accessor_obj.__proj_set_crs__(name, crs)
 
         return _obj
