@@ -2,7 +2,14 @@
 
 Xarray extension for projections and coordinate reference systems.
 
-(nothing much to see here for the moment).
+**Current development status: experimental, proof-of-concept**
+
+## Usage
+
+See the notebooks in the "examples" folder.
+
+- [Demo](https://nbviewer.org/github/benbovy/xproj/blob/main/examples/demo.ipynb)
+- [Interoperability with 3rd-party Xarray extensions](https://nbviewer.org/github/benbovy/xproj/blob/main/examples/xarray_geo_extensions.ipynb)
 
 ## Goals
 
@@ -20,11 +27,10 @@ Xarray extension for projections and coordinate reference systems.
 
 ## Non-Goals
 
-- Enforce too strict conventions on how CRS should be represented in Xarray
-  datasets or dataarrays (i.e., coordinate names and attributes, CRS format,
-  etc.) and/or in Xarray supported I/O formats. This is left to other Xarray
-  extensions and format specifications (e.g., GeoZarr, GeoTIFF, GeoParquet,
-  etc.).
+- Being strongly opinionated on how CRS should be represented as metadata in
+  Xarray objects and/or in Xarray supported I/O formats. This is left to other
+  Xarray extensions and format specifications (e.g., GeoZarr, GeoTIFF,
+  GeoParquet, etc.).
 - Provide a common set of tools (implementations) for re-projecting data. This
   highly depends on the data type (i.e., raster, vector, etc.) or application
   and it is best handled by other Xarray extensions.
