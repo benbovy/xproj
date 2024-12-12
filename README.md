@@ -2,7 +2,7 @@
 
 Xarray extension for projections and coordinate reference systems.
 
-**Current development status: experimental, proof-of-concept**
+*Current development status: experimental, proof-of-concept.*
 
 ## Usage
 
