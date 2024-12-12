@@ -234,7 +234,7 @@ class ProjAccessor:
         else:
             return crs_index.crs
 
-    def set_crs(
+    def assign_crs(
         self,
         coord_name_crs: Mapping[Hashable, Any] | None = None,
         allow_override: bool = False,
@@ -253,7 +253,7 @@ class ProjAccessor:
             :meth:`pyproj.CRS.from_user_input() <pyproj.crs.CRS.from_user_input>` such
             as an authority string (e.g. ``"EPSG:4326"``), EPSG code (e.g. ``4326``) or
             a WKT string.
-            If the coordinate(s) doesn't exist they will be created.
+            If the coordinate(s) doesn't exist it will be created.
             Only one item is currently allowed.
         allow_override : bool, default False
             Allow to replace the index if the coordinates already have an index.
