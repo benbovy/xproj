@@ -283,6 +283,6 @@ class ProjAccessor:
 
             for accessor_obj in GeoAccessorRegistry.get_accessors(_obj):
                 if hasattr(accessor_obj, "__proj_set_crs__"):
-                    accessor_obj.__proj_set_crs__(name, crs)
+                    _obj = accessor_obj.__proj_set_crs__(name, crs)
 
         return _obj
