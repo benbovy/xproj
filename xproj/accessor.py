@@ -282,7 +282,7 @@ class ProjAccessor:
             _obj = _obj.drop_indexes(name, errors="ignore").set_xindex(str(name), CRSIndex, crs=crs)
 
             for accessor_obj in GeoAccessorRegistry.get_accessors(_obj):
-                if hasattr(accessor_obj, "__set_crs__"):
-                    accessor_obj.__set_crs__(name, crs)
+                if hasattr(accessor_obj, "__proj_set_crs__"):
+                    accessor_obj.__proj_set_crs__(name, crs)
 
         return _obj
