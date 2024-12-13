@@ -281,6 +281,16 @@ class ProjAccessor:
                 )
             _obj = _obj.drop_indexes(name, errors="ignore").set_xindex(str(name), CRSIndex, crs=crs)
 
+            # 3rd-party index hooks
+            for index, vars in _obj.xindexes.group_by_index():
+                if hasattr(index, "__proj_set_crs__"):
+                    new_index = index.__proj_set_crs__(name, crs)  # type: ignore
+                    new_vars = new_index.create_variables(vars)
+                    _obj = _obj.assign_coords(
+                        xr.Coordinates(new_vars, {n: new_index for n in vars})
+                    )
+
+            # 3rd-party geospatial accessor hooks
             for accessor_obj in GeoAccessorRegistry.get_accessors(_obj):
                 if hasattr(accessor_obj, "__proj_set_crs__"):
                     _obj = accessor_obj.__proj_set_crs__(name, crs)
