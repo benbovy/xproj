@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Hashable, Mapping
+import warnings
+from collections.abc import Hashable, Iterable, Mapping
 from typing import Any, TypeVar, cast
 
 import pyproj
@@ -281,18 +282,83 @@ class ProjAccessor:
                 )
             _obj = _obj.drop_indexes(name, errors="ignore").set_xindex(str(name), CRSIndex, crs=crs)
 
-            # 3rd-party index hooks
-            for index, vars in _obj.xindexes.group_by_index():
-                if hasattr(index, "__proj_set_crs__"):
-                    new_index = index.__proj_set_crs__(name, crs)  # type: ignore
-                    new_vars = new_index.create_variables(vars)
-                    _obj = _obj.assign_coords(
-                        xr.Coordinates(new_vars, {n: new_index for n in vars})
-                    )
-
             # 3rd-party geospatial accessor hooks
             for accessor_obj in GeoAccessorRegistry.get_accessors(_obj):
                 if hasattr(accessor_obj, "__proj_set_crs__"):
                     _obj = accessor_obj.__proj_set_crs__(name, crs)
+
+        return _obj
+
+    def map_crs(
+        self,
+        crs_coord_to_coords: Mapping[Hashable, Iterable[Hashable]] | None = None,
+        **crs_coord_to_coords_kwargs: Any,
+    ) -> xr.DataArray | xr.Dataset:
+        """Map spatial reference coordinate(s) to other indexed coordinates.
+
+        Parameters
+        ----------
+        crs_coord_to_coords : dict, optional
+            A dict where the keys are the names of (scalar) spatial reference
+            coordinates and values are the names of other coordinates with an index.
+        **coord_names_crs_kwargs : optional
+            The keyword arguments form of ``crs_coord_to_coords``.
+            One of ``crs_coord_to_coords`` or ``coord_name_crs_kwargs`` must be provided.
+
+        """
+        crs_coord_to_coords = either_dict_or_kwargs(
+            crs_coord_to_coords, crs_coord_to_coords_kwargs, "map_crs"
+        )
+
+        # TODO: only one CRS per Dataset / DataArray -> maybe remove this restriction later
+        # (https://github.com/benbovy/xproj/issues/2)
+        if len(crs_coord_to_coords) > 1:
+            raise ValueError("xproj doesn't support multiple CRSs yet.")
+
+        _obj = self._obj.copy(deep=False)
+        indexes = _obj.xindexes
+
+        for crs_coord_name, coord_names in crs_coord_to_coords.items():
+            crs = self(crs_coord_name).crs
+
+            map_indexes = []
+            map_indexes_coords = set()
+
+            for name in coord_names:
+                if name in map_indexes_coords:
+                    continue
+                if name not in _obj.coords:
+                    raise KeyError(f"no coordinate {name!r} found in Dataset or DataArray")
+                elif name not in indexes:
+                    raise KeyError(
+                        f"no index found in Dataset or DataArray for coordinate {name!r}"
+                    )
+
+                map_indexes.append(indexes[name])
+                map_indexes_coords.update(set(indexes.get_all_coords(name)))
+
+            # must explicitly provide all coordinates of each found index
+            missing_coords = map_indexes_coords - set(coord_names)
+            if missing_coords:
+                raise ValueError(
+                    f"missing indexed coordinate(s) to map to the {crs_coord_name!r} spatial "
+                    f"reference coordinate: {tuple(missing_coords)}"
+                )
+
+            for index, vars in indexes.group_by_index():
+                if index not in map_indexes:
+                    continue
+                if not hasattr(index, "__proj_set_crs__"):
+                    warnings.warn(
+                        f"the index of coordinates {tuple(vars)} doesn't implement the "
+                        "`__proj_set_crs__` interface, `map_crs()` won't have any effect.",
+                        UserWarning,
+                    )
+                else:
+                    new_index = index.__proj_set_crs__(crs_coord_name, crs)  # type: ignore
+                    new_vars = new_index.create_variables(vars)
+                    _obj = _obj.assign_coords(
+                        xr.Coordinates(new_vars, {n: new_index for n in vars})
+                    )
 
         return _obj
