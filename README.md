@@ -27,10 +27,10 @@ See the notebooks in the "examples" folder.
 
 ## Non-Goals
 
-- Being strongly opinionated on how CRS should be represented as metadata in
-  Xarray objects and/or in Xarray supported I/O formats. This is left to other
-  Xarray extensions and format specifications (e.g., GeoZarr, GeoTIFF,
-  GeoParquet, etc.).
+- Being strongly opinionated on how CRS and other information like spatial
+  dimensions should be represented as metadata in Xarray objects and/or in
+  Xarray supported I/O formats. This is left to other Xarray extensions and
+  format specifications (e.g., GeoZarr, GeoTIFF, GeoParquet, etc.).
 - Provide a common set of tools (implementations) for re-projecting data. This
   highly depends on the data type (i.e., raster, vector, etc.) or application
   and it is best handled by other Xarray extensions. We also see XProj

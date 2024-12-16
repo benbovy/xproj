@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Hashable, Iterable, Mapping
-from typing import Any, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast
 
 import pyproj
 import xarray as xr
@@ -27,42 +27,6 @@ def either_dict_or_kwargs(
     if positional is None or positional == {}:
         return cast(Mapping[Hashable, Any], keyword)
     return positional
-
-
-def get_crs_indexes(
-    xr_obj: xr.Dataset | xr.DataArray,
-    coord_name: Hashable | None = None,
-) -> dict[Hashable, CRSIndex]:
-    """Find the coordinates with a CRSIndex in a Dataset or DataArray.
-
-    Return an empty dictionary if no such indexed coordinate is found.
-
-    Currently raise an error if multiple coordinates are found in the
-    same Dataset or DataArray (currently not supported).
-
-    """
-    if coord_name is not None:
-        if coord_name not in xr_obj.coords:
-            raise KeyError(f"no coordinate {coord_name!r} found in Dataset or DataArray")
-
-        indexes = xr_obj.xindexes
-        if coord_name not in indexes:
-            raise ValueError(f"coordinate {coord_name!r} has no index")
-
-        index = indexes[coord_name]
-        if not isinstance(index, CRSIndex):
-            raise ValueError(f"coordinate {coord_name!r} index is not a CRSIndex")
-
-        return {coord_name: index}
-
-    else:
-        crs_indexes = {}
-        for idx, vars in xr_obj.xindexes.group_by_index():
-            if isinstance(idx, CRSIndex):
-                coord_name = next(iter(vars))
-                crs_indexes[coord_name] = idx
-
-        return crs_indexes
 
 
 class GeoAccessorRegistry:
@@ -111,25 +75,22 @@ def register_geoaccessor(accessor_cls: T_AccessorClass) -> T_AccessorClass:
     return accessor_cls
 
 
-class CRSAccessor:
-    """Xarray extension entry-point for a single CRS."""
+class CRSProxy:
+    """A proxy for a CRS(-aware) indexed coordinate."""
 
     _obj: xr.Dataset | xr.DataArray
     _crs_coord_name: Hashable
-    _crs_index: CRSIndex
+    _crs: pyproj.CRS
 
-    def __init__(self, obj: xr.Dataset | xr.DataArray, coord_name: Hashable, index: CRSIndex):
+    def __init__(self, obj: xr.Dataset | xr.DataArray, coord_name: Hashable, crs: pyproj.CRS):
         self._obj = obj
-
-        # crs_indexes = get_crs_indexes(obj, coord_name=coord_name)
-        # assert len(crs_indexes) == 1
         self._crs_coord_name = coord_name
-        self._crs_index = index
+        self._crs = crs
 
     @property
     def crs(self) -> pyproj.CRS:
         """Return the coordinate reference system as a :class:`pyproj.CRS` object."""
-        return self._crs_index.crs
+        return self._crs
 
 
 @xr.register_dataset_accessor("proj")
@@ -138,18 +99,36 @@ class ProjAccessor:
     """Xarray `.proj` extension entry-point."""
 
     _obj: xr.Dataset | xr.DataArray
-    _crs_indexes = dict[Hashable, CRSIndex] | None
+    _crs_indexes: dict[Hashable, CRSIndex] | None
+    _crs_aware_indexes: dict[Hashable, xr.Index] | None
+    _crs: pyproj.CRS | None | Literal[False]
 
     def __init__(self, obj: xr.Dataset | xr.DataArray):
         self._obj = obj
         self._crs_indexes = None
+        self._crs_aware_indexes = None
+        self._crs = False
+
+    def _cache_all_crs_indexes(self):
+        # get both CRSIndex objects and CRS-aware Index objects in cache
+        self._crs_indexes = {}
+        self._crs_aware_indexes = {}
+
+        for idx, vars in self._obj.xindexes.group_by_index():
+            if isinstance(idx, CRSIndex):
+                name = next(iter(vars))
+                self._crs_indexes[name] = idx
+            elif hasattr(idx, "__proj_get_crs__"):
+                for name in vars:
+                    self._crs_aware_indexes[name] = idx
 
     @property
     def crs_indexes(self) -> Frozen[Hashable, CRSIndex]:
         """Return an immutable dictionary of coordinate names as keys and
         CRSIndex objects as values.
 
-        Return an empty dictionary if no coordinate with a CRSIndex is found.
+        Return an empty dictionary if no coordinate with a :py:class:`CRSIndex`
+        is found.
 
         Otherwise return a dictionary with a single entry or raise an error if
         multiple coordinates with a CRSIndex are found (currently not
@@ -157,8 +136,23 @@ class ProjAccessor:
 
         """
         if self._crs_indexes is None:
-            self._crs_indexes = get_crs_indexes(self._obj)
+            self._cache_all_crs_indexes()
+
         return FrozenDict(self._crs_indexes)
+
+    @property
+    def crs_aware_indexes(self) -> Frozen[Hashable, xr.Index]:
+        """Return an immutable dictionary of coordinate names as keys and
+        xarray Index objects that are CRS-aware.
+
+        An :py:class:`xarray.Index` is CRS-aware if it implements the CRS
+        interface, i.e., at least has a method named ``__proj_get_crs__``.
+
+        """
+        if self._crs_aware_indexes is None:
+            self._cache_all_crs_indexes()
+
+        return FrozenDict(self._crs_aware_indexes)
 
     def __call__(self, coord_name: Hashable):
         """Select a given CRS by coordinate name.
@@ -166,19 +160,24 @@ class ProjAccessor:
         Parameter
         ---------
         coord_name : Hashable
-            The name of a (scalar) spatial reference coordinate, which
-            must have a CRSIndex.
+            Either the name of a (scalar) spatial reference coordinate with a
+            :py:class:`CRSIndex` or the name of a coordinate with an index that
+            implements the CRS interface.
 
         Returns
         -------
-        crs_accessor
-            A Xarray Dataset or DataArray accessor for a single CRS.
+        proxy
+            A proxy accessor for a single CRS.
 
         """
+        if coord_name in self.crs_aware_indexes:
+            index = self.crs_aware_indexes[coord_name]
+            return CRSProxy(self._obj, coord_name, index.__proj_get_crs__())  # type: ignore
+
         # TODO: only one CRS per Dataset / DataArray -> maybe remove this restriction later
         # (https://github.com/benbovy/xproj/issues/2)
         try:
-            self.assert_single_crs()
+            self.assert_one_crs_index()
         except AssertionError:
             raise ValueError(
                 "found multiple coordinates with a CRSIndex in Dataset or DataArray "
@@ -193,9 +192,9 @@ class ProjAccessor:
             else:
                 raise ValueError(f"coordinate {coord_name!r} index is not a CRSIndex")
 
-        return CRSAccessor(self._obj, coord_name, self.crs_indexes[coord_name])
+        return CRSProxy(self._obj, coord_name, self.crs_indexes[coord_name].crs)
 
-    def assert_single_crs(self):
+    def assert_one_crs_index(self):
         """Raise an `AssertionError` if no or multiple CRS-indexed coordinates
         are found in the Dataset or DataArray.
         """
@@ -207,33 +206,29 @@ class ProjAccessor:
             raise AssertionError(msg)
 
     @property
-    def _crs_index(self) -> CRSIndex | None:
-        # return a CRSIndex if only one instance is found in Dataset or DataArray
-        # return None if no such instance is found
-        # raise an error if multiple instances are found
-        indexes = self.crs_indexes
-        if len(indexes) > 1:
-            raise ValueError(
-                "found multiple coordinates with a CRSIndex in Dataset or DataArray. "
-                "Use instead `.proj('coord_name')` to a select a spatial reference coordinate."
-            )
-        elif len(indexes) == 1:
-            return next(iter(indexes.values()))
-        else:
-            return None
-
-    @property
     def crs(self) -> pyproj.CRS | None:
         """Return the coordinate reference system as a :class:`pyproj.CRS`
         object, or ``None`` if there isn't any.
 
         """
-        crs_index = self._crs_index
+        if self._crs is False:
+            all_crs = {name: idx.crs for name, idx in self.crs_indexes.items()}
+            for name, idx in self.crs_aware_indexes.items():
+                crs = idx.__proj_get_crs__()  # type: ignore
+                if crs is not None:
+                    all_crs[name] = crs
 
-        if crs_index is None:
-            return None
-        else:
-            return crs_index.crs
+            if not all_crs:
+                self._crs = None
+            elif len(set(all_crs.values())) == 1:
+                self._crs = next(iter(all_crs.values()))
+            else:
+                raise ValueError(
+                    "found multiple CRS in Dataset or DataArray:\n"
+                    + "\n".join(f"{name}: {crs.to_string()}" for name, crs in all_crs.items())
+                )
+
+        return self._crs  # type: ignore
 
     def assign_crs(
         self,
