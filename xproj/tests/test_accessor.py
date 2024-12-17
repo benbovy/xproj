@@ -134,3 +134,30 @@ def test_accessor_crs() -> None:
     ds = ds.set_xindex("spatial_ref2", xproj.CRSIndex, crs=pyproj.CRS.from_epsg(4978))
     with pytest.raises(ValueError, match="found multiple CRS"):
         ds.proj.crs
+
+
+def test_accessor_assign_crs() -> None:
+    ds = xr.Dataset()
+
+    # nothing happens but should return a copy
+    assert ds.proj.assign_crs() is not ds
+
+    actual = ds.proj.assign_crs(spatial_ref=pyproj.CRS.from_epsg(4326))
+    actual2 = ds.proj.assign_crs({"spatial_ref": pyproj.CRS.from_epsg(4326)})
+    expected = ds.assign_coords(spatial_ref=0).set_xindex(
+        "spatial_ref", xproj.CRSIndex, crs=pyproj.CRS.from_epsg(4326)
+    )
+    xr.testing.assert_identical(actual, expected)
+    xr.testing.assert_identical(actual2, expected)
+
+    with pytest.raises(ValueError, match="coordinate 'spatial_ref' already has an index"):
+        actual.proj.assign_crs(spatial_ref=pyproj.CRS.from_epsg(4978))
+
+    actual = actual.proj.assign_crs(spatial_ref=pyproj.CRS.from_epsg(4978), allow_override=True)
+    expected = ds.assign_coords(spatial_ref=0).set_xindex(
+        "spatial_ref", xproj.CRSIndex, crs=pyproj.CRS.from_epsg(4978)
+    )
+    xr.testing.assert_identical(actual, expected)
+
+    with pytest.raises(ValueError, match="setting multiple CRS"):
+        ds.proj.assign_crs(a=pyproj.CRS.from_epsg(4326), b=pyproj.CRS.from_epsg(4978))
