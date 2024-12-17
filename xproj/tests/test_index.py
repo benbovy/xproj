@@ -6,12 +6,12 @@ from xarray.indexes import PandasIndex
 from xproj import CRSIndex
 
 
-def test_crsindex_init():
+def test_crsindex_init() -> None:
     index = CRSIndex(pyproj.CRS.from_user_input("epsg:4326"))
     assert index.crs == pyproj.CRS.from_user_input("epsg:4326")
 
 
-def test_create_crsindex():
+def test_create_crsindex() -> None:
     ds = xr.Dataset(coords={"spatial_ref": 0})
 
     # pass CRS via build option
@@ -22,7 +22,7 @@ def test_create_crsindex():
     assert getattr(ds_index.xindexes["spatial_ref"], "crs") == crs
 
 
-def test_create_crsindex_error():
+def test_create_crsindex_error() -> None:
     ds = xr.Dataset(coords={"spatial_ref": 0, "spatial_ref2": ("x", [0])})
 
     with pytest.raises(ValueError, match="from one scalar variable"):
@@ -32,7 +32,7 @@ def test_create_crsindex_error():
         ds.set_xindex("spatial_ref2", CRSIndex)
 
 
-def test_crsindex_repr():
+def test_crsindex_repr() -> None:
     crs = pyproj.CRS.from_user_input("epsg:4326")
     index = CRSIndex(crs)
 
@@ -40,7 +40,7 @@ def test_crsindex_repr():
     assert repr(index) == expected
 
 
-def test_crsindex_repr_inline():
+def test_crsindex_repr_inline() -> None:
     crs = pyproj.CRS.from_user_input("epsg:4326")
     index = CRSIndex(crs)
 
@@ -51,7 +51,7 @@ def test_crsindex_repr_inline():
     assert index._repr_inline_(5) == expected_trunc
 
 
-def test_crsindex_equals():
+def test_crsindex_equals() -> None:
     idx1 = CRSIndex(pyproj.CRS.from_user_input("epsg:4326"))
     idx2 = CRSIndex(pyproj.CRS.from_user_input("epsg:4326"))
     assert idx1.equals(idx2) is True
