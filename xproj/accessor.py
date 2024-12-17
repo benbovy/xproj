@@ -118,7 +118,7 @@ class ProjAccessor:
             if isinstance(idx, CRSIndex):
                 name = next(iter(vars))
                 self._crs_indexes[name] = idx
-            elif hasattr(idx, "__proj_get_crs__"):
+            elif hasattr(idx, "_proj_get_crs"):
                 for name in vars:
                     self._crs_aware_indexes[name] = idx
 
@@ -146,7 +146,7 @@ class ProjAccessor:
         xarray Index objects that are CRS-aware.
 
         An :py:class:`xarray.Index` is CRS-aware if it implements the CRS
-        interface, i.e., at least has a method named ``__proj_get_crs__``.
+        interface, i.e., at least has a method named ``_proj_get_crs``.
 
         """
         if self._crs_aware_indexes is None:
@@ -172,7 +172,7 @@ class ProjAccessor:
         """
         if coord_name in self.crs_aware_indexes:
             index = self.crs_aware_indexes[coord_name]
-            return CRSProxy(self._obj, coord_name, index.__proj_get_crs__())  # type: ignore
+            return CRSProxy(self._obj, coord_name, index._proj_get_crs())  # type: ignore
 
         # TODO: only one CRS per Dataset / DataArray -> maybe remove this restriction later
         # (https://github.com/benbovy/xproj/issues/2)
@@ -214,7 +214,7 @@ class ProjAccessor:
         if self._crs is False:
             all_crs = {name: idx.crs for name, idx in self.crs_indexes.items()}
             for name, idx in self.crs_aware_indexes.items():
-                crs = idx.__proj_get_crs__()  # type: ignore
+                crs = idx._proj_get_crs()  # type: ignore
                 if crs is not None:
                     all_crs[name] = crs
 
@@ -279,8 +279,8 @@ class ProjAccessor:
 
             # 3rd-party geospatial accessor hooks
             for accessor_obj in GeoAccessorRegistry.get_accessors(_obj):
-                if hasattr(accessor_obj, "__proj_set_crs__"):
-                    _obj = accessor_obj.__proj_set_crs__(name, crs)
+                if hasattr(accessor_obj, "_proj_set_crs"):
+                    _obj = accessor_obj._proj_set_crs(name, crs)
 
         return _obj
 
@@ -343,14 +343,14 @@ class ProjAccessor:
             for index, vars in indexes.group_by_index():
                 if index not in map_indexes:
                     continue
-                if not hasattr(index, "__proj_set_crs__"):
+                if not hasattr(index, "_proj_set_crs"):
                     warnings.warn(
                         f"the index of coordinates {tuple(vars)} doesn't implement the "
-                        "`__proj_set_crs__` interface, `map_crs()` won't have any effect.",
+                        "`_proj_set_crs` interface, `map_crs()` won't have any effect.",
                         UserWarning,
                     )
                 else:
-                    new_index = index.__proj_set_crs__(crs_coord_name, crs)  # type: ignore
+                    new_index = index._proj_set_crs(crs_coord_name, crs)  # type: ignore
                     new_vars = new_index.create_variables(vars)
                     _obj = _obj.assign_coords(
                         xr.Coordinates(new_vars, {n: new_index for n in vars})
