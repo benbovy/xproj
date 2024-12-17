@@ -38,6 +38,7 @@ def test_accessor_crs_indexes(spatial_xr_obj) -> None:
     expected = spatial_xr_obj.xindexes["spatial_ref"]
     assert actual is expected
 
+    # should also test the cached value
     assert list(spatial_xr_obj.proj.crs_indexes) == ["spatial_ref"]
 
     # frozen dict
@@ -52,6 +53,8 @@ def test_accessor_crs_aware_indexes() -> None:
     ds = xr.Dataset(coords={"foo": ("x", [1, 2])}).set_xindex("foo", GeoIndex)
 
     assert ds.proj.crs_aware_indexes["foo"] is ds.xindexes["foo"]
+
+    # should also test the cached value
     assert list(ds.proj.crs_aware_indexes) == ["foo"]
 
     # frozen dict
@@ -74,7 +77,7 @@ def test_accessor_callable_crs_aware_index() -> None:
     assert ds.proj("foo").crs == ds.xindexes["foo"]._proj_get_crs()  # type: ignore
 
 
-def test_accessor_error(spatial_xr_obj) -> None:
+def test_accessor_callable_error(spatial_xr_obj) -> None:
     obj = spatial_xr_obj.assign_coords(x=[1, 2], foo=("x", [3, 4]))
 
     with pytest.raises(KeyError, match="no coordinate 'bar' found"):
@@ -91,3 +94,43 @@ def test_accessor_error(spatial_xr_obj) -> None:
 
     with pytest.raises(ValueError, match="found multiple coordinates with a CRSIndex"):
         obj.proj("spatial_ref2")
+
+
+def test_accessor_assert_one_index() -> None:
+    ds = xr.Dataset()
+
+    with pytest.raises(AssertionError, match="no CRS found"):
+        ds.proj.assert_one_crs_index()
+
+    ds = ds.assign_coords({"a": 0, "b": 1})
+    ds = ds.set_xindex("a", xproj.CRSIndex, crs=pyproj.CRS.from_epsg(4326))
+    ds = ds.set_xindex("b", xproj.CRSIndex, crs=pyproj.CRS.from_epsg(4978))
+
+    with pytest.raises(AssertionError, match="multiple CRS found"):
+        ds.proj.assert_one_crs_index()
+
+
+def test_accessor_crs() -> None:
+    class NoCRSIndex(PandasIndex):
+        def _proj_get_crs(self):
+            return None
+
+    ds = xr.Dataset()
+    assert ds.proj.crs is None
+    assert ds.proj.crs is None  # test cached value
+
+    ds = ds.assign_coords(foo=("x", [1, 2])).set_xindex("foo", NoCRSIndex)
+    assert ds.proj.crs is None
+
+    ds = ds.drop_indexes("foo").set_xindex("foo", GeoIndex)
+    assert ds.proj.crs == pyproj.CRS.from_epsg(4326)
+
+    ds = ds.drop_vars("foo")
+    ds = ds.assign_coords(spatial_ref=0)
+    ds = ds.set_xindex("spatial_ref", xproj.CRSIndex, crs=pyproj.CRS.from_epsg(4326))
+    assert ds.proj.crs == pyproj.CRS.from_epsg(4326)
+
+    ds = ds.assign_coords(spatial_ref2=0)
+    ds = ds.set_xindex("spatial_ref2", xproj.CRSIndex, crs=pyproj.CRS.from_epsg(4978))
+    with pytest.raises(ValueError, match="found multiple CRS"):
+        ds.proj.crs
