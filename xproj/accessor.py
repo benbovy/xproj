@@ -69,7 +69,10 @@ T_AccessorClass = TypeVar("T_AccessorClass")
 
 
 def register_accessor(accessor_cls: T_AccessorClass) -> T_AccessorClass:
-    """Register a geospatial, CRS-dependent Xarray (Dataset and/or DataArray) accessor."""
+    """Decorator for registering a geospatial, CRS-dependent Xarray
+    (Dataset and/or DataArray) accessor.
+
+    """
 
     GeoAccessorRegistry.register_accessor(accessor_cls)
     return accessor_cls
