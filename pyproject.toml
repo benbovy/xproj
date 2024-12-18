@@ -83,3 +83,8 @@ known-third-party = [
   "xarray",
   "pyproj",
 ]
+
+[tool.mypy]
+files = ["xproj"]
+show_error_codes = true
+warn_unused_ignores = false

@@ -35,4 +35,4 @@ jobs:
 
       - name: Run mypy
         run: |
-          python -m mypy --install-types --non-interactive
+          python -m mypy
