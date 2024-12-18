@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Hashable, Mapping
+from _collections_abc import Hashable, Mapping
+from typing import Any
 
 import pyproj
 import xarray as xr
@@ -13,7 +14,6 @@ def _format_crs(crs: pyproj.CRS, max_width: int = 20) -> str:
 
 
 class CRSIndex(Index):
-
     _crs: pyproj.CRS
     _coord_names: list[Hashable]
 

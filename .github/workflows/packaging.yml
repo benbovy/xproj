@@ -1,0 +1,46 @@
+name: Packaging
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  pull_request:
+    paths:
+      - ".github/workflows/packaging.yml"
+      - "pyproject.toml"
+
+jobs:
+  dist:
+    name: Build & inspect package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: hynek/build-and-inspect-python-package@v2
+
+  publish:
+    name: Upload package to PyPI
+    needs: [dist]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+    if: github.event_name == 'release' && github.event.action == 'published'
+    steps:
+      - name: Get dist files
+        uses: actions/download-artifact@v4
+        with:
+          name: Packages
+          path: dist
+
+      - name: Generate artifact attestation for sdist and wheel
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "dist/*"
+
+      - name: Publish on PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
