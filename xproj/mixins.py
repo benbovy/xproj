@@ -1,6 +1,6 @@
 import abc
 from collections.abc import Hashable
-from typing import TypeVar
+from typing import Generic, TypeVar
 
 import pyproj
 import xarray as xr
@@ -8,7 +8,7 @@ import xarray as xr
 T_Xarray_Object = TypeVar("T_Xarray_Object", xr.Dataset, xr.DataArray)
 
 
-class ProjAccessorMixin(abc.ABC):
+class ProjAccessorMixin(abc.ABC, Generic[T_Xarray_Object]):
     """Mixin class that marks xproj support for an Xarray accessor."""
 
     @abc.abstractmethod

@@ -44,8 +44,8 @@ class GeoAccessorRegistry:
         for xr_cls in (xr.Dataset, xr.DataArray):
             accessor_names[xr_cls] = {n for n in dir(xr_cls) if getattr(xr_cls, n) is accessor_cls}
 
-        if not accessor_names:
-            raise KeyError(
+        if not accessor_names[xr.Dataset] and not accessor_names[xr.DataArray]:
+            raise ValueError(
                 f"class {accessor_cls.__name__} is not an Xarray Dataset or DataArray "
                 "accessor decorated class"
             )
@@ -308,7 +308,7 @@ class ProjAccessor:
         # TODO: only one CRS per Dataset / DataArray -> maybe remove this restriction later
         # (https://github.com/benbovy/xproj/issues/2)
         if len(crs_coord_to_coords) > 1:
-            raise ValueError("xproj doesn't support multiple CRSs yet.")
+            raise ValueError("mapping multiple CRSs is currently not supported")
 
         _obj = self._obj.copy(deep=False)
         indexes = _obj.xindexes

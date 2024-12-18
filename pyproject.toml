@@ -38,6 +38,11 @@ dependencies = [
   "pyproj",
 ]
 
+[project.optional-dependencies]
+test = [
+  "pytest",
+]
+
 [project.urls]
 Documentation = "https://xproj.readthedocs.io"
 Repository = "https://github.com/benbovy/xproj"
@@ -78,3 +83,8 @@ known-third-party = [
   "xarray",
   "pyproj",
 ]
+
+[tool.mypy]
+files = ["xproj"]
+show_error_codes = true
+warn_unused_ignores = false
