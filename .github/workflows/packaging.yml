@@ -4,6 +4,10 @@ on:
   workflow_dispatch:
   release:
     types: [published]
+  pull_request:
+    paths:
+      - ".github/workflows/packaging.yml"
+      - "pyproject.toml"
 
 jobs:
   dist:
