@@ -11,7 +11,7 @@ on:
 
 jobs:
   dist:
-    name: Build & inspect package.
+    name: Build & inspect package
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
