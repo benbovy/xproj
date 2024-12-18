@@ -27,7 +27,7 @@ jobs:
 
       - name: Install xproj
         run: |
-          python -m pip install -e .
+          python -m pip install -e .[test]
 
       - name: Install mypy
         run: |
