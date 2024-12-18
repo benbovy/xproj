@@ -82,7 +82,7 @@ nb_execution_cache_path = "_build/myst-nb"
 # -- Options for HTML output ----------------------------------------------
 
 html_theme = "sphinx_book_theme"
-html_title = ""
+html_title = "XProj"
 
 html_theme_options = dict(
     repository_url="https://github.com/benbovy/xproj",
@@ -92,6 +92,7 @@ html_theme_options = dict(
     use_repository_button=True,
     use_issues_button=True,
     home_page_in_toc=False,
+    announcement="Current development status: experimental, proof-of-concept.",
 )
 
 # html_static_path = ["_static"]

@@ -1,8 +1,7 @@
 # XProj Documentation
 
-Xarray extension for projections and coordinate reference systems.
-
-*Current development status: experimental, proof-of-concept.*
+A lightweight Xarray extension for managing geospatial coordinate reference
+systems (CRS) using PROJ/[Pyproj].
 
 **Useful links**:
 [Home](http://xproj.readthedocs.io/) |
@@ -16,5 +15,10 @@ Xarray extension for projections and coordinate reference systems.
 ```{toctree}
 :maxdepth: 1
 
+install
+usage
+integration
 api
 ```
+
+[Pyproj]: https://pyproj4.github.io/pyproj/stable/
