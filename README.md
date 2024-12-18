@@ -1,3 +1,5 @@
+[![Tests](https://github.com/benbovy/xproj/actions/workflows/test.yml/badge.svg?branch=main&event=push)](https://github.com/benbovy/xproj/actions/test.yml?query=branch%3Amain+event%3Apush)
+
 # XProj
 
 Xarray extension for projections and coordinate reference systems.
