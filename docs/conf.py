@@ -71,7 +71,7 @@ napoleon_type_aliases = {
     "DataArray": "~xarray.DataArray",
     "Dataset": "~xarray.Dataset",
     # objects without namespace: pyproj
-    "CRS": "~pyproj.CRS",
+    "CRS": ":py:class:`~pyproj.CRS`",
 }
 
 # -- myst-nb options ------------------------------------------------------

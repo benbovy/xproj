@@ -72,6 +72,15 @@ def register_accessor(accessor_cls: T_AccessorClass) -> T_AccessorClass:
     """Decorator for registering a geospatial, CRS-dependent Xarray
     (Dataset and/or DataArray) accessor.
 
+    Parameters
+    ----------
+    accessor_cls : class
+        A Python class that has been decorated with
+        :py:func:`xarray.register_dataset_accessor` and/or
+        :py:func:`xarray.register_dataarray_accessor`.
+        It is important that this decorator is applied on top of
+        those Xarray decorators.
+
     """
 
     GeoAccessorRegistry.register_accessor(accessor_cls)
@@ -128,10 +137,9 @@ class ProjAccessor:
     @property
     def crs_indexes(self) -> Frozen[Hashable, CRSIndex]:
         """Return an immutable dictionary of coordinate names as keys and
-        CRSIndex objects as values.
+        :py:class:`~xproj.CRSIndex` objects as values.
 
-        Return an empty dictionary if no coordinate with a :py:class:`CRSIndex`
-        is found.
+        Return an empty dictionary if no coordinate with a CRSIndex is found.
 
         Otherwise return a dictionary with a single entry or raise an error if
         multiple coordinates with a CRSIndex are found (currently not
@@ -148,8 +156,9 @@ class ProjAccessor:
         """Return an immutable dictionary of coordinate names as keys and
         xarray Index objects that are CRS-aware.
 
-        An :py:class:`xarray.Index` is CRS-aware if it implements the CRS
-        interface, i.e., at least has a method named ``_proj_get_crs``.
+        An :py:class:`xarray.Index` is CRS-aware if it implements XProj's CRS
+        interface, i.e., at least implements a method like
+        :py:meth:`~xproj.ProjIndexMixin._proj_get_crs`.
 
         """
         if self._crs_aware_indexes is None:
@@ -164,8 +173,8 @@ class ProjAccessor:
         ---------
         coord_name : Hashable
             Either the name of a (scalar) spatial reference coordinate with a
-            :py:class:`CRSIndex` or the name of a coordinate with an index that
-            implements the CRS interface.
+            :py:class:`~xproj.CRSIndex` or the name of a coordinate with an
+            index that implements XProj's CRS interface.
 
         Returns
         -------
@@ -210,7 +219,7 @@ class ProjAccessor:
 
     @property
     def crs(self) -> pyproj.CRS | None:
-        """Return the coordinate reference system as a :class:`pyproj.CRS`
+        """Return the coordinate reference system as a :py:class:`pyproj.crs.CRS`
         object, or ``None`` if there isn't any.
 
         """

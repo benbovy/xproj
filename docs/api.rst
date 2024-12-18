@@ -8,7 +8,15 @@ API Reference
 Dataset ``proj`` extension
 --------------------------
 
-CRS properties
+XProj extends :py:class:`xarray.Dataset` with the properties and methods below.
+To enable it, be sure to import ``xproj`` after ``xarray``:
+
+.. code-block:: python
+
+   >>> import xarray as xr
+   >>> import xproj
+
+**CRS properties**
 
 .. autosummary::
    :toctree: _api_generated/
@@ -18,7 +26,7 @@ CRS properties
    Dataset.proj.crs_aware_indexes
    Dataset.proj.crs
 
-CRS methods
+**CRS methods**
 
 .. autosummary::
    :toctree: _api_generated/
@@ -31,7 +39,15 @@ CRS methods
 DataArray ``proj`` extension
 ----------------------------
 
-CRS properties
+XProj extends :py:class:`xarray.DataArray` with the properties and methods below.
+To enable it, be sure to import ``xproj`` after ``xarray``:
+
+.. code-block:: python
+
+   >>> import xarray as xr
+   >>> import xproj
+
+**CRS properties**
 
 .. autosummary::
    :toctree: _api_generated/
@@ -41,7 +57,7 @@ CRS properties
    DataArray.proj.crs_aware_indexes
    DataArray.proj.crs
 
-CRS methods
+**CRS methods**
 
 .. autosummary::
    :toctree: _api_generated/
@@ -55,9 +71,17 @@ CRS methods
 3rd-party Xarray extensions
 ---------------------------
 
+XProj provides some utilities (Mixin classes, decorators) for easier integration
+with 3rd-party Xarray geospatial extensions.
+
 .. autosummary::
    :toctree: _api_generated/
+   :template: autosummary/mixin.rst
 
    ProjAccessorMixin
    ProjIndexMixin
+
+.. autosummary::
+   :toctree: _api_generated/
+
    register_accessor
