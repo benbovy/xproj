@@ -15,8 +15,8 @@ kernelspec:
 
 3rd-party Xarray geospatial extensions may leverage XProj in different ways:
 
-- simply consume the API exposed via the ["proj" Dataset and DataArray
-  accessors](proj_accessors).
+- simply consume the API exposed via the {ref}`"proj" Dataset and DataArray
+  accessors <proj_accessors>`.
 
 - register a custom Xarray accessor that implements XProj's {term}`accessor
   interface` (example below)

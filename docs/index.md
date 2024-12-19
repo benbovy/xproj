@@ -53,7 +53,7 @@ api
   package instead (i.e., a lightweight Xarray extension mostly built on top of
   [Pyproj]).
 - Provide a common end-user API for handling CRS via
-  [Xarray accessors](proj_accessors).
+  {ref}`Xarray accessors <proj_accessors>`.
 - Leverage recent Xarray features such as custom indexes. Easily compare,
   combine or align Xarray datasets or dataarrays based on their CRS (via
   {class}`~xproj.CRSIndex`).
