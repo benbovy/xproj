@@ -1,4 +1,4 @@
-[![Tests](https://github.com/benbovy/xproj/actions/workflows/test.yml/badge.svg?branch=main&event=push)](https://github.com/benbovy/xproj/actions/test.yml?query=branch%3Amain+event%3Apush)
+[![Tests](https://github.com/benbovy/xproj/actions/workflows/test.yml/badge.svg?branch=main&event=push)](https://github.com/benbovy/xproj/actions/workflows/test.yml?query=branch%3Amain+event%3Apush)
 [![Docs](https://readthedocs.org/projects/xproj/badge/?version=latest)](https://xproj.readthedocs.io)
 [![Coverage](https://codecov.io/gh/benbovy/xproj/branch/main/graph/badge.svg)](https://app.codecov.io/gh/benbovy/xproj?branch=main)
 
