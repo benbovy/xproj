@@ -25,7 +25,8 @@ class CRSIndex(Index):
 
     This index is used for propagation of the CRS information through Xarray
     operations and for CRS-aware alignment of Xarray objects (only checking
-    strict equality, automatic re-indexing / re-projection is not supported).
+    strict equality, automatic re-indexing / re-projection is not supported). It
+    doesn't support CRS-aware data selection.
 
     """
 

@@ -5,6 +5,8 @@ API Reference
 
 .. currentmodule:: xarray
 
+.. _proj_accessors:
+
 Dataset ``proj`` extension
 --------------------------
 

@@ -74,7 +74,9 @@ napoleon_type_aliases = {
     "CRS": ":py:class:`~pyproj.CRS`",
 }
 
-# -- myst-nb options ------------------------------------------------------
+# -- myst(-nb) options ----------------------------------------------------
+
+myst_enable_extensions = ["colon_fence", "attrs_inline", "attrs_block"]
 
 nb_execution_timeout = -1
 nb_execution_cache_path = "_build/myst-nb"

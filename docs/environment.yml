@@ -5,6 +5,8 @@ dependencies:
   - python=3.11
   - xarray
   - pyproj
+  - pooch
+  - netcdf4
   - sphinx
   - pydata-sphinx-theme=0.15.4
   - sphinx-book-theme=1.1.3
