@@ -8,6 +8,7 @@ import pyproj
 import xarray as xr
 
 from xproj.index import CRSIndex
+from xproj.mixins import ProjIndexMixin
 from xproj.utils import Frozen, FrozenDict
 
 
@@ -105,6 +106,10 @@ class CRSProxy:
         return self._crs
 
 
+def is_crs_aware(index: xr.Index) -> bool:
+    return isinstance(index, ProjIndexMixin) or hasattr(index, "_proj_get_crs")
+
+
 @xr.register_dataset_accessor("proj")
 @xr.register_dataarray_accessor("proj")
 class ProjAccessor:
@@ -130,7 +135,7 @@ class ProjAccessor:
             if isinstance(idx, CRSIndex):
                 name = next(iter(vars))
                 self._crs_indexes[name] = idx
-            elif hasattr(idx, "_proj_get_crs"):
+            elif is_crs_aware(idx):
                 for name in vars:
                     self._crs_aware_indexes[name] = idx
 
@@ -289,18 +294,26 @@ class ProjAccessor:
     def map_crs(
         self,
         spatial_ref_coords: Mapping[Hashable, Iterable[Hashable]] | None = None,
+        allow_override: bool = False,
+        transform: bool = False,
         **spatial_ref_coords_kwargs: Any,
     ) -> xr.DataArray | xr.Dataset:
         """Map spatial reference coordinate(s) to other indexed coordinates.
 
         This has an effect only if the latter coordinates have a
-        :term:`CRS-aware index`.
+        :term:`CRS-aware index`. The index must then support setting the CRS via
+        the :term:`proj index interface`.
 
         Parameters
         ----------
         spatial_ref_coords : dict, optional
             A dict where the keys are the names of (scalar) spatial reference
             coordinates and values are the names of other coordinates with an index.
+        allow_override : bool, optional
+            If True, replace the CRS of the target index(es) even if they already have
+            a CRS defined (default: False).
+        transform : bool, optional
+            If True (default: False), transform coordinate data to conform to the new CRS.
         **spatial_ref_coords_kwargs : optional
             The keyword arguments form of ``spatial_ref_coords``.
             One of ``spatial_ref_coords`` or ``spatial_ref_coords_kwargs`` must be provided.
@@ -308,7 +321,8 @@ class ProjAccessor:
         Returns
         -------
         Dataset or DataArray
-            A new Dataset or DatArray object with updated CRS-aware indexes.
+            A new Dataset or DatArray object with updated CRS-aware indexes (and possibly
+            updated coordinate data).
 
         """
         spatial_ref_coords = either_dict_or_kwargs(
@@ -318,8 +332,8 @@ class ProjAccessor:
         _obj = self._obj.copy(deep=False)
         indexes = _obj.xindexes
 
-        for crs_coord_name, coord_names in spatial_ref_coords.items():
-            crs = self(crs_coord_name).crs
+        for spatial_ref, coord_names in spatial_ref_coords.items():
+            crs = self(spatial_ref).crs
 
             map_indexes = []
             map_indexes_coords = set()
@@ -341,24 +355,41 @@ class ProjAccessor:
             missing_coords = map_indexes_coords - set(coord_names)
             if missing_coords:
                 raise ValueError(
-                    f"missing indexed coordinate(s) to map to the {crs_coord_name!r} spatial "
+                    f"missing indexed coordinate(s) to map to the {spatial_ref!r} spatial "
                     f"reference coordinate: {tuple(missing_coords)}"
                 )
 
             for index, vars in indexes.group_by_index():
                 if index not in map_indexes:
                     continue
-                if not hasattr(index, "_proj_set_crs"):
+                if not is_crs_aware(index):
                     warnings.warn(
-                        f"the index of coordinates {tuple(vars)} doesn't implement the "
-                        "`_proj_set_crs` interface, `map_crs()` won't have any effect.",
+                        f"the index of coordinates {tuple(vars)} is not recognized as CRS-aware "
+                        "by Xproj. `map_crs()` won't have any effect.",
                         UserWarning,
                     )
+                    continue
+
+                index_crs = index._proj_get_crs()  # type: ignore
+
+                if not allow_override:
+                    if index_crs is not None and index_crs != crs:
+                        raise ValueError(
+                            f"the index of coordinates {tuple(vars)} already has a CRS {index_crs} "
+                            f"that is different than the spatial reference coordinate CRS {crs} "
+                            "and allow_override=False"
+                        )
+
+                if index_crs == crs:
+                    continue
+
+                if transform and index_crs is not None:
+                    index_update_crs_func = getattr(index, "_proj_to_crs")
                 else:
-                    new_index = index._proj_set_crs(crs_coord_name, crs)  # type: ignore
-                    new_vars = new_index.create_variables(vars)
-                    _obj = _obj.assign_coords(
-                        xr.Coordinates(new_vars, {n: new_index for n in vars})
-                    )
+                    index_update_crs_func = getattr(index, "_proj_set_crs")
+
+                new_index = index_update_crs_func(spatial_ref, crs)
+                new_vars = new_index.create_variables(vars)
+                _obj = _obj.assign_coords(xr.Coordinates(new_vars, {n: new_index for n in vars}))
 
         return _obj
