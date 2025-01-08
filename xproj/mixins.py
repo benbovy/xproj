@@ -12,13 +12,13 @@ class ProjAccessorMixin(abc.ABC, Generic[T_Xarray_Object]):
     """Mixin class that marks XProj support for an Xarray accessor."""
 
     @abc.abstractmethod
-    def _proj_set_crs(self, crs_coord_name: Hashable, crs: pyproj.CRS) -> T_Xarray_Object:
+    def _proj_set_crs(self, spatial_ref: Hashable, crs: pyproj.CRS) -> T_Xarray_Object:
         """Method called when setting a new CRS via
         :py:meth:`xarray.Dataset.proj.assign_crs()`.
 
         Parameters
         ----------
-        crs_coord_name : Hashable
+        spatial_ref : Hashable
             The name of the spatial reference (scalar) coordinate
             to which the CRS has been set.
         crs : pyproj.crs.CRS
@@ -48,13 +48,13 @@ class ProjIndexMixin(abc.ABC):
         """
         ...
 
-    def _proj_set_crs(self, crs_coord_name: Hashable, crs: pyproj.CRS) -> T_Xarray_Object | None:
+    def _proj_set_crs(self, spatial_ref: Hashable, crs: pyproj.CRS) -> T_Xarray_Object | None:
         """Method called when mapping a CRS to index coordinate(s) via
         :py:meth:`xarray.Dataset.proj.map_crs()`.
 
         Parameters
         ----------
-        crs_coord_name : Hashable
+        spatial_ref : Hashable
             The name of the spatial reference (scalar) coordinate.
         crs : pyproj.crs.CRS
             The new CRS attached to the spatial reference coordinate.

@@ -141,10 +141,6 @@ class ProjAccessor:
 
         Return an empty dictionary if no coordinate with a CRSIndex is found.
 
-        Otherwise return a dictionary with a single entry or raise an error if
-        multiple coordinates with a CRSIndex are found (currently not
-        supported).
-
         """
         if self._crs_indexes is None:
             self._cache_all_crs_indexes()
@@ -156,8 +152,8 @@ class ProjAccessor:
         """Return an immutable dictionary of coordinate names as keys and
         xarray Index objects that are CRS-aware.
 
-        An :py:class:`xarray.Index` is CRS-aware if it implements XProj's CRS
-        interface, i.e., at least implements a method like
+        A :term:`CRS-aware index` is an :py:class:`xarray.Index` object that
+        must at least implements a method like
         :py:meth:`~xproj.ProjIndexMixin._proj_get_crs`.
 
         """
@@ -212,6 +208,8 @@ class ProjAccessor:
         """Return the coordinate reference system as a :py:class:`pyproj.crs.CRS`
         object, or ``None`` if there isn't any.
 
+        Raises an error if multiple CRS are found in the Dataset or DataArray.
+
         """
         if self._crs is False:
             all_crs = {name: idx.crs for name, idx in self.crs_indexes.items()}
@@ -234,36 +232,44 @@ class ProjAccessor:
 
     def assign_crs(
         self,
-        coord_name_crs: Mapping[Hashable, Any] | None = None,
+        spatial_ref_crs: Mapping[Hashable, Any] | None = None,
         allow_override: bool = False,
-        **coord_name_crs_kwargs: Any,
+        **spatial_ref_crs_kwargs: Any,
     ) -> xr.DataArray | xr.Dataset:
-        """Set the coordinate reference system (CRS) attached to a scalar coordinate.
+        """Assign one or more spatial reference coordinate variables, each with
+        a given coordinate reference system (CRS).
 
         Doesn't trigger any coordinate transformation or data resampling.
 
         Parameters
         ----------
-        coord_name_crs : dict-like or None, optional
-            A dict where the keys are the names of the (scalar) coordinates and values
-            target CRS in any format accepted by
+        spatial_ref_crs : dict-like or None, optional
+            A dict where the keys are the names of the (scalar) coordinate variables
+            and values target CRS in any format accepted by
             :meth:`pyproj.CRS.from_user_input() <pyproj.crs.CRS.from_user_input>` such
             as an authority string (e.g. ``"EPSG:4326"``), EPSG code (e.g. ``4326``) or
             a WKT string.
             If the coordinate(s) doesn't exist it will be created.
-            Only one item is currently allowed.
         allow_override : bool, default False
             Allow to replace the index if the coordinates already have an index.
-        **coord_names_crs_kwargs : optional
-            The keyword arguments form of ``coord_name_crs``.
-            One of ``coord_name_crs`` or ``coord_name_crs_kwargs`` must be provided.
+        **spatial_ref_crs_kwargs : optional
+            The keyword arguments form of ``spatial_ref_crs``.
+            One of ``spatial_ref_crs`` or ``spatial_ref_crs_kwargs`` must be provided.
+
+        Returns
+        -------
+        Dataset or DataArray
+            A new Dataset or DataArray object with new or updated
+            :term:`spatial reference coordinate` variables.
 
         """
-        coord_name_crs = either_dict_or_kwargs(coord_name_crs, coord_name_crs_kwargs, "set_crs")
+        spatial_ref_crs = either_dict_or_kwargs(
+            spatial_ref_crs, spatial_ref_crs_kwargs, "assign_crs"
+        )
 
         _obj = self._obj.copy(deep=False)
 
-        for name, crs in coord_name_crs.items():
+        for name, crs in spatial_ref_crs.items():
             if name not in _obj.coords:
                 _obj.coords[name] = 0
             if not allow_override and name in _obj.xindexes:
@@ -282,29 +288,37 @@ class ProjAccessor:
 
     def map_crs(
         self,
-        crs_coord_to_coords: Mapping[Hashable, Iterable[Hashable]] | None = None,
-        **crs_coord_to_coords_kwargs: Any,
+        spatial_ref_coords: Mapping[Hashable, Iterable[Hashable]] | None = None,
+        **spatial_ref_coords_kwargs: Any,
     ) -> xr.DataArray | xr.Dataset:
         """Map spatial reference coordinate(s) to other indexed coordinates.
 
+        This has an effect only if the latter coordinates have a
+        :term:`CRS-aware index`.
+
         Parameters
         ----------
-        crs_coord_to_coords : dict, optional
+        spatial_ref_coords : dict, optional
             A dict where the keys are the names of (scalar) spatial reference
             coordinates and values are the names of other coordinates with an index.
-        **coord_names_crs_kwargs : optional
-            The keyword arguments form of ``crs_coord_to_coords``.
-            One of ``crs_coord_to_coords`` or ``coord_name_crs_kwargs`` must be provided.
+        **spatial_ref_coords_kwargs : optional
+            The keyword arguments form of ``spatial_ref_coords``.
+            One of ``spatial_ref_coords`` or ``spatial_ref_coords_kwargs`` must be provided.
+
+        Returns
+        -------
+        Dataset or DataArray
+            A new Dataset or DatArray object with updated CRS-aware indexes.
 
         """
-        crs_coord_to_coords = either_dict_or_kwargs(
-            crs_coord_to_coords, crs_coord_to_coords_kwargs, "map_crs"
+        spatial_ref_coords = either_dict_or_kwargs(
+            spatial_ref_coords, spatial_ref_coords_kwargs, "map_crs"
         )
 
         _obj = self._obj.copy(deep=False)
         indexes = _obj.xindexes
 
-        for crs_coord_name, coord_names in crs_coord_to_coords.items():
+        for crs_coord_name, coord_names in spatial_ref_coords.items():
             crs = self(crs_coord_name).crs
 
             map_indexes = []
