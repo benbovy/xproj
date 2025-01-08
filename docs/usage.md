@@ -16,6 +16,8 @@ mystnb:
 # Usage Examples
 
 ```{code-cell} ipython3
+import numpy as np
+import pyproj
 import xarray as xr
 import xproj
 
@@ -144,4 +146,49 @@ resulting dataset will have the common CRS found among all datasets.
 
 ```{code-cell} ipython3
 ds_wgs84 + ds_no_crs
+```
+
+## Multi-CRS Dataset or DataArray
+
+Xproj supports Dataset or DataArray objects with multiple {term}`spatial
+reference coordinates <spatial reference coordinate>`.
+
+:::{warning}
+This feature is experimental and may be removed in the future.
+:::
+
+One possible use case is having a dataset with both geographic and projected
+coordinates, e.g.,
+
+```{code-cell} ipython3
+projected_crs = pyproj.CRS.from_epsg(4087)
+
+p = pyproj.Proj(projected_crs)
+lonlon, latlat = np.meshgrid(ds.lon, ds.lat)
+xx, yy = p(lonlon - 360, latlat)
+
+ds_both = (
+    ds_wgs84
+    .rename_vars(spatial_ref="geographic_ref")
+    .assign_coords(x=(("lat", "lon"), xx), y=(("lat", "lon"), yy))
+    .proj.assign_crs(projected_ref=projected_crs)
+)
+
+ds_both
+```
+
+Trying to access the (unique) CRS of the dataset raises an error:
+
+```{code-cell} ipython3
+:tags: [raises-exception]
+
+ds_both.proj.crs
+```
+
+To access either the geographic or the projected CRS, the name of the
+corresponding spatial reference coordinate must be passed explicitly to the
+`.proj` accessor:
+
+```{code-cell} ipython3
+ds_both.proj("projected_ref").crs
 ```

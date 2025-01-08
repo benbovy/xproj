@@ -186,16 +186,6 @@ class ProjAccessor:
             index = self.crs_aware_indexes[coord_name]
             return CRSProxy(self._obj, coord_name, index._proj_get_crs())  # type: ignore
 
-        # TODO: only one CRS per Dataset / DataArray -> maybe remove this restriction later
-        # (https://github.com/benbovy/xproj/issues/2)
-        try:
-            self.assert_one_crs_index()
-        except AssertionError:
-            raise ValueError(
-                "found multiple coordinates with a CRSIndex in Dataset or DataArray "
-                "(currently not supported)."
-            )
-
         if coord_name not in self.crs_indexes:
             if coord_name not in self._obj.coords:
                 raise KeyError(f"no coordinate {coord_name!r} found in Dataset or DataArray")
@@ -250,7 +240,6 @@ class ProjAccessor:
     ) -> xr.DataArray | xr.Dataset:
         """Set the coordinate reference system (CRS) attached to a scalar coordinate.
 
-        Currently supports setting only one CRS.
         Doesn't trigger any coordinate transformation or data resampling.
 
         Parameters
@@ -271,11 +260,6 @@ class ProjAccessor:
 
         """
         coord_name_crs = either_dict_or_kwargs(coord_name_crs, coord_name_crs_kwargs, "set_crs")
-
-        # TODO: only one CRS per Dataset / DataArray -> maybe remove this restriction later
-        # (https://github.com/benbovy/xproj/issues/2)
-        if len(coord_name_crs) > 1:
-            raise ValueError("setting multiple CRSs is currently not supported.")
 
         _obj = self._obj.copy(deep=False)
 
@@ -316,11 +300,6 @@ class ProjAccessor:
         crs_coord_to_coords = either_dict_or_kwargs(
             crs_coord_to_coords, crs_coord_to_coords_kwargs, "map_crs"
         )
-
-        # TODO: only one CRS per Dataset / DataArray -> maybe remove this restriction later
-        # (https://github.com/benbovy/xproj/issues/2)
-        if len(crs_coord_to_coords) > 1:
-            raise ValueError("mapping multiple CRSs is currently not supported")
 
         _obj = self._obj.copy(deep=False)
         indexes = _obj.xindexes

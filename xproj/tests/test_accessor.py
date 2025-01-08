@@ -1,7 +1,7 @@
 import pyproj
 import pytest
 import xarray as xr
-from xarray.indexes import PandasIndex, PandasMultiIndex
+from xarray.indexes import Index, PandasIndex
 
 import xproj
 
@@ -89,6 +89,11 @@ def test_accessor_callable(spatial_xr_obj) -> None:
     expected = spatial_xr_obj.xindexes["spatial_ref"].crs
     assert actual == expected
 
+    # 2nd spatial reference coordinate
+    obj2 = spatial_xr_obj.assign_coords(spatial_ref2=0)
+    obj2 = obj2.set_xindex("spatial_ref2", xproj.CRSIndex, crs=pyproj.CRS.from_epsg(4978))
+    assert obj2.proj("spatial_ref2").crs == obj2.xindexes["spatial_ref2"].crs
+
 
 def test_accessor_callable_crs_aware_index() -> None:
     ds = xr.Dataset(coords={"foo": ("x", [1, 2])}).set_xindex("foo", ImmutableCRSIndex)
@@ -107,12 +112,6 @@ def test_accessor_callable_error(spatial_xr_obj) -> None:
 
     with pytest.raises(ValueError, match="coordinate 'x' index is not a CRSIndex"):
         obj.proj("x")
-
-    obj = obj.assign_coords(spatial_ref2=0)
-    obj = obj.set_xindex("spatial_ref2", xproj.CRSIndex, crs=pyproj.CRS.from_epsg(4978))
-
-    with pytest.raises(ValueError, match="found multiple coordinates with a CRSIndex"):
-        obj.proj("spatial_ref2")
 
 
 def test_accessor_assert_one_index() -> None:
@@ -178,8 +177,10 @@ def test_accessor_assign_crs() -> None:
     )
     xr.testing.assert_identical(actual, expected)
 
-    with pytest.raises(ValueError, match="setting multiple CRS"):
-        ds.proj.assign_crs(a=pyproj.CRS.from_epsg(4326), b=pyproj.CRS.from_epsg(4978))
+    # multiple spatial reference coordinates
+    ds2 = ds.proj.assign_crs(a=pyproj.CRS.from_epsg(4326), b=pyproj.CRS.from_epsg(4978))
+    assert "a" in ds2.proj.crs_indexes
+    assert "b" in ds2.proj.crs_indexes
 
 
 def test_accessor_map_crs(spatial_xr_obj) -> None:
@@ -204,25 +205,23 @@ def test_accessor_map_crs(spatial_xr_obj) -> None:
     with pytest.raises(KeyError, match="no index found"):
         obj.proj.map_crs(spatial_ref=["foo"])
 
-    obj = (
-        spatial_xr_obj.assign_coords(foo=("x", [1, 2]), bar=("x", [3, 4]), a=0)
-        .set_xindex("foo", MutableCRSIndex)
-        .set_xindex("bar", MutableCRSIndex)
-        .set_xindex("a", xproj.CRSIndex, crs=pyproj.CRS.from_epsg(4326))
-    )
-    with pytest.raises(ValueError, match="mapping multiple CRSs is currently not supported"):
-        obj.proj.map_crs(spatial_ref=["foo"], a=["bar"])
-
     obj = spatial_xr_obj.assign_coords(foo=("x", [1, 2])).set_xindex("foo", MutableCRSIndex)
     with pytest.raises(KeyError, match="no coordinate 'a' found"):
         obj.proj.map_crs(a=["foo"])
 
 
-def test_accessor_map_crs_multiindex() -> None:
-    class GeoMultiIndex(PandasMultiIndex):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self._crs = None
+def test_accessor_map_crs_multicoord_index() -> None:
+    class RasterIndex(Index):
+        def __init__(self, xy_indexes):
+            self._xyindexes = xy_indexes
+
+        @classmethod
+        def from_variables(cls, variables, *, options):
+            xy_indexes = {
+                "x": PandasIndex.from_variables({"x": variables["x"]}, options={}),
+                "y": PandasIndex.from_variables({"y": variables["y"]}, options={}),
+            }
+            return cls(xy_indexes)
 
         def _proj_get_crs(self):
             return self._crs
@@ -231,18 +230,12 @@ def test_accessor_map_crs_multiindex() -> None:
             self._crs = crs
             return self
 
-        def _copy(self, deep=True, memo=None):
-            # bug in PandasIndex? crs attribute not copied here
-            obj = super()._copy(deep=deep, memo=memo)
-            obj._crs = self._crs
-            return obj
-
-    ds = xr.Dataset(coords={"x": [1, 2], "y": [3, 4]}).stack(z=["x", "y"])
-    ds = ds.drop_indexes(["z", "x", "y"]).set_xindex(["x", "y"], GeoMultiIndex)
+    coords = xr.Coordinates({"x": [1, 2], "y": [3, 4]}, indexes={})
+    ds = xr.Dataset(coords=coords).set_xindex(["x", "y"], RasterIndex)
     ds = ds.proj.assign_crs(spatial_ref=pyproj.CRS.from_epsg(4326))
 
-    actual = ds.proj.map_crs(spatial_ref=["z", "x", "y"])
-    for name in ("z", "x", "y"):
+    actual = ds.proj.map_crs(spatial_ref=["x", "y"])
+    for name in ("x", "y"):
         assert actual.proj(name).crs == pyproj.CRS.from_epsg(4326)
 
     with pytest.raises(ValueError, match="missing indexed coordinate"):
