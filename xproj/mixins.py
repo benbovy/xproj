@@ -1,7 +1,7 @@
 import abc
 import sys
 from collections.abc import Hashable
-from typing import TYPE_CHECKING, Any, Generic, Self, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 import pyproj
 import xarray as xr
