@@ -1,6 +1,6 @@
 import abc
 from collections.abc import Hashable
-from typing import Generic, TypeVar
+from typing import Generic, Self, TypeVar
 
 import pyproj
 import xarray as xr
@@ -49,10 +49,10 @@ class ProjIndexMixin(abc.ABC):
         ...
 
     def _proj_set_crs(
-        self,
+        self: Self,
         spatial_ref: Hashable,
         crs: pyproj.CRS,
-    ) -> T_Xarray_Object:
+    ) -> Self:
         """Method called when mapping a CRS to index coordinate(s) via
         :py:meth:`xarray.Dataset.proj.map_crs`.
 
@@ -65,17 +65,17 @@ class ProjIndexMixin(abc.ABC):
 
         Returns
         -------
-        xarray.Dataset or xarray.DataArray
-            Either a new or an existing Dataset or DataArray.
+        Index
+            Either a new or an existing xarray Index.
 
         """
         raise NotImplementedError("This CRS-aware index does not support (re)setting the CRS.")
 
     def _proj_to_crs(
-        self,
+        self: Self,
         spatial_ref: Hashable,
         crs: pyproj.CRS,
-    ) -> T_Xarray_Object:
+    ) -> Self:
         """Method called when mapping a CRS to index coordinate(s) via
         :py:meth:`xarray.Dataset.proj.map_crs` with ``transform=True``.
 
@@ -88,8 +88,8 @@ class ProjIndexMixin(abc.ABC):
 
         Returns
         -------
-        xarray.Dataset or xarray.DataArray
-            Either a new or an existing Dataset or DataArray.
+        Index
+            Either a new or an existing xarray Index.
 
         """
         raise NotImplementedError(
