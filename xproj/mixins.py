@@ -1,9 +1,21 @@
 import abc
+import sys
 from collections.abc import Hashable
-from typing import Generic, Self, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Self, TypeVar
 
 import pyproj
 import xarray as xr
+
+try:
+    if sys.version_info >= (3, 11):
+        from typing import Self
+    else:
+        from typing_extensions import Self
+except ImportError:
+    if TYPE_CHECKING:
+        raise
+    else:
+        Self: Any = None
 
 T_Xarray_Object = TypeVar("T_Xarray_Object", xr.Dataset, xr.DataArray)
 
