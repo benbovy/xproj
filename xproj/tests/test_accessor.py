@@ -1,7 +1,7 @@
 import pyproj
 import pytest
 import xarray as xr
-from xarray.indexes import PandasIndex, PandasMultiIndex
+from xarray.indexes import Index, PandasIndex
 
 import xproj
 
@@ -210,11 +210,18 @@ def test_accessor_map_crs(spatial_xr_obj) -> None:
         obj.proj.map_crs(a=["foo"])
 
 
-def test_accessor_map_crs_multiindex() -> None:
-    class GeoMultiIndex(PandasMultiIndex):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self._crs = None
+def test_accessor_map_crs_multicoord_index() -> None:
+    class RasterIndex(Index):
+        def __init__(self, xy_indexes):
+            self._xyindexes = xy_indexes
+
+        @classmethod
+        def from_variables(cls, variables, *, options):
+            xy_indexes = {
+                "x": PandasIndex.from_variables({"x": variables["x"]}, options={}),
+                "y": PandasIndex.from_variables({"y": variables["y"]}, options={}),
+            }
+            return cls(xy_indexes)
 
         def _proj_get_crs(self):
             return self._crs
@@ -223,18 +230,12 @@ def test_accessor_map_crs_multiindex() -> None:
             self._crs = crs
             return self
 
-        def _copy(self, deep=True, memo=None):
-            # bug in PandasIndex? crs attribute not copied here
-            obj = super()._copy(deep=deep, memo=memo)
-            obj._crs = self._crs
-            return obj
-
-    ds = xr.Dataset(coords={"x": [1, 2], "y": [3, 4]}).stack(z=["x", "y"])
-    ds = ds.drop_indexes(["z", "x", "y"]).set_xindex(["x", "y"], GeoMultiIndex)
+    coords = xr.Coordinates({"x": [1, 2], "y": [3, 4]}, indexes={})
+    ds = xr.Dataset(coords=coords).set_xindex(["x", "y"], RasterIndex)
     ds = ds.proj.assign_crs(spatial_ref=pyproj.CRS.from_epsg(4326))
 
-    actual = ds.proj.map_crs(spatial_ref=["z", "x", "y"])
-    for name in ("z", "x", "y"):
+    actual = ds.proj.map_crs(spatial_ref=["x", "y"])
+    for name in ("x", "y"):
         assert actual.proj(name).crs == pyproj.CRS.from_epsg(4326)
 
     with pytest.raises(ValueError, match="missing indexed coordinate"):
