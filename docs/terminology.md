@@ -27,9 +27,9 @@ CRS-aware index
    features, etc.). It is distinct from a {class}`~xproj.CRSIndex`, which is
    exclusively associated with a {term}`spatial reference coordinate`. XProj
    identifies an Xarray index as CRS-aware if the latter implements the
-   {term}`index interface`.
+   {term}`proj index interface`.
 
-Index interface
+Proj index interface
    A set of XProj-specific "hook" methods that can be implemented in a
    {term}`CRS-aware index` and that allow executing custom logic (e.g.,
    coordinate transformation) or updating the internal state of the index via
@@ -38,11 +38,11 @@ Index interface
    {class}`~xproj.ProjIndexMixin`, although it is not required for an Xarray
    Index to inherit from this mixin class.
 
-Accessor interface
+Proj accessor interface
    A set of XProj-specific "hook" methods that can be implemented in an Xarray
    Dataset or DataArray accessor and that allow executing custom logic (e.g.,
    re-projection) or updating the internal state of the accessor via XProj's
-   public API. The accessor interface is defined in
+   public API. The proj accessor interface is defined in
    {class}`~xproj.ProjAccessorMixin`, from which the accessor class should
    inherit.
 

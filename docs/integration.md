@@ -18,10 +18,10 @@ kernelspec:
 - simply consume the API exposed via the {ref}`"proj" Dataset and DataArray
   accessors <proj_accessors>`.
 
-- register a custom Xarray accessor that implements XProj's {term}`accessor
+- register a custom Xarray accessor that implements the {term}`proj accessor
   interface` (example below)
 
-- implement one or more methods of XProj's {term}`index interface` in a custom
+- implement one or more methods of the {term}`proj index interface` in a custom
   Xarray index (example below)
 
 <br>
@@ -41,7 +41,7 @@ that is also explictly registered with the {func}`xproj.register_accessor`
 decorator. It inherits from {class}`~xproj.ProjAccessorMixin`.
 
 Registering this "geo" accessor allows executing custom logic from within the
-accessor (via XProj's {term}`accessor interface`) when calling `xproj` API.
+accessor (via the {term}`proj accessor interface`) when calling `xproj` API.
 
 :::{note}
 The {func}`xproj.register_accessor` decorator must be applied after (on top of)
@@ -122,8 +122,8 @@ class GeoIndex(xr.indexes.PandasIndex, xproj.ProjIndexMixin):
     def _proj_get_crs(self):
         return self._crs
 
-    def _proj_set_crs(self, crs_coord_name, crs):
-        # `crs_coord_name` is not used here
+    def _proj_set_crs(self, spatial_ref, crs):
+        # note: `spatial_ref` is not used here
         print(f"set CRS of index {self!r} to crs={crs}!")
 
         self._crs = crs
@@ -170,7 +170,7 @@ ds_geo_wgs84 = ds_geo_wgs84.proj.map_crs(spatial_ref=["lat", "lon"])
 ```
 
 The CRS of the "lat" and "lon" geo-indexed coordinates is updated via the
-{term}`index interface` implemented in ``GeoIndex``. Data selection is now
+{term}`proj index interface` implemented in ``GeoIndex``. Data selection is now
 CRS-aware! (just a warning is emitted below).
 
 ```{code-cell} ipython3
@@ -199,7 +199,7 @@ temp
 ```
 
 ```{code-cell} ipython3
-ds_geo_wgs72 = temp.proj.map_crs(spatial_ref=["lat", "lon"])
+ds_geo_wgs72 = temp.proj.map_crs(spatial_ref=["lat", "lon"], allow_override=True)
 
 # up-to-date CRS
 ds_geo_wgs72
