@@ -102,16 +102,25 @@ def test_accessor_callable_crs_aware_index() -> None:
 
 
 def test_accessor_callable_error(spatial_xr_obj) -> None:
-    obj = spatial_xr_obj.assign_coords(x=[1, 2], foo=("x", [3, 4]))
+    class DummyIndex(xr.Index):
+        @classmethod
+        def from_variables(cls, variables, *, options):
+            return cls()
+
+    obj = spatial_xr_obj.assign_coords(x=[1, 2], foo=("x", [3, 4]), a=0, b=0)
+    obj = obj.set_xindex("b", DummyIndex)
 
     with pytest.raises(KeyError, match="no coordinate 'bar' found"):
         obj.proj("bar")
 
-    with pytest.raises(ValueError, match="coordinate 'foo' has no index"):
+    with pytest.raises(ValueError, match="coordinate 'foo' is not a scalar coordinate"):
         obj.proj("foo")
 
-    with pytest.raises(ValueError, match="coordinate 'x' index is not a CRSIndex"):
-        obj.proj("x")
+    with pytest.raises(ValueError, match="coordinate 'a' has no index"):
+        obj.proj("a")
+
+    with pytest.raises(ValueError, match="coordinate 'b' index is not a CRSIndex"):
+        obj.proj("b")
 
 
 def test_accessor_assert_one_index() -> None:
@@ -241,3 +250,41 @@ def test_accessor_map_crs_multicoord_index() -> None:
 
     with pytest.raises(ValueError, match="missing indexed coordinate"):
         ds.proj.map_crs(spatial_ref=["x"])
+
+
+def test_accessor_write_crs_info(spatial_xr_obj) -> None:
+    obj_with_attrs = spatial_xr_obj.proj.write_crs_info()
+    assert "crs_wkt" in obj_with_attrs.spatial_ref.attrs
+
+    # test CRSIndex is preserved
+    assert "spatial_ref" in obj_with_attrs.xindexes
+
+    # test attrs unchanged in original object
+    assert "crs_wkt" not in spatial_xr_obj.spatial_ref.attrs
+
+    # test spatial ref coordinate provided explicitly
+    obj_with_attrs2 = spatial_xr_obj.proj.write_crs_info("spatial_ref")
+    assert "crs_wkt" in obj_with_attrs2.spatial_ref.attrs
+
+    # test alternative func
+    obj_with_attrs3 = spatial_xr_obj.proj.write_crs_info(func=xproj.format_full_cf_gdal)
+    assert "crs_wkt" in obj_with_attrs3.spatial_ref.attrs
+    assert "spatial_ref" in obj_with_attrs3.spatial_ref.attrs
+    assert "grid_mapping_name" in obj_with_attrs3.spatial_ref.attrs
+
+
+def test_accessor_clear_crs_info(spatial_xr_obj) -> None:
+    obj_with_attrs = spatial_xr_obj.proj.write_crs_info()
+
+    cleared = obj_with_attrs.proj.clear_crs_info()
+    assert not len(cleared.spatial_ref.attrs)
+
+    # test CRSIndex is preserved
+    assert "spatial_ref" in cleared.xindexes
+
+    # test attrs unchanged in original object
+    assert len(obj_with_attrs.spatial_ref.attrs) > 0
+
+    # test spatial ref coordinate provided explicitly
+    cleared2 = obj_with_attrs.proj.clear_crs_info("spatial_ref")
+    assert not len(cleared2.spatial_ref.attrs)

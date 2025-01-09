@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Hashable, Iterable, Mapping
+from collections.abc import Callable, Hashable, Iterable, Mapping
 from typing import Any, Literal, TypeVar, cast
 
 import pyproj
 import xarray as xr
 
+from xproj.crs_utils import format_compact_cf
 from xproj.index import CRSIndex
 from xproj.mixins import ProjIndexMixin
 from xproj.utils import Frozen, FrozenDict
@@ -167,6 +168,27 @@ class ProjAccessor:
 
         return FrozenDict(self._crs_aware_indexes)
 
+    def _get_crs_index(self, coord_name: Hashable) -> CRSIndex:
+        # Get a nice error message when trying to access a spatial reference
+        # coordinate with a CRSIndex using an arbitrary name.
+
+        if coord_name not in self.crs_indexes:
+            if coord_name not in self._obj.coords:
+                raise KeyError(f"no coordinate {coord_name!r} found in Dataset or DataArray")
+            elif self._obj.coords[coord_name].ndim != 0:
+                raise ValueError(f"coordinate {coord_name!r} is not a scalar coordinate")
+            elif coord_name not in self._obj.xindexes:
+                raise ValueError(
+                    f"coordinate {coord_name!r} has no index. It must have a CRSIndex associated "
+                    f"(e.g., via Dataset.proj.assign_crs({coord_name}=...) or "
+                    f"DataArray.proj.assign_crs({coord_name}=...)) to be used as "
+                    "a spatial reference coordinate with xproj."
+                )
+            else:
+                raise ValueError(f"coordinate {coord_name!r} index is not a CRSIndex")
+
+        return self.crs_indexes[coord_name]
+
     def __call__(self, coord_name: Hashable):
         """Select a given CRS by coordinate name.
 
@@ -183,19 +205,14 @@ class ProjAccessor:
             A proxy accessor for a single CRS.
 
         """
+        crs: pyproj.CRS
+
         if coord_name in self.crs_aware_indexes:
-            index = self.crs_aware_indexes[coord_name]
-            return CRSProxy(self._obj, coord_name, index._proj_get_crs())  # type: ignore
+            crs = self.crs_aware_indexes[coord_name]._proj_get_crs()  # type: ignore
+        else:
+            crs = self._get_crs_index(coord_name).crs
 
-        if coord_name not in self.crs_indexes:
-            if coord_name not in self._obj.coords:
-                raise KeyError(f"no coordinate {coord_name!r} found in Dataset or DataArray")
-            elif coord_name not in self._obj.xindexes:
-                raise ValueError(f"coordinate {coord_name!r} has no index")
-            else:
-                raise ValueError(f"coordinate {coord_name!r} index is not a CRSIndex")
-
-        return CRSProxy(self._obj, coord_name, self.crs_indexes[coord_name].crs)
+        return CRSProxy(self._obj, coord_name, crs)
 
     def assert_one_crs_index(self):
         """Raise an `AssertionError` if no or multiple CRS-indexed coordinates
@@ -333,7 +350,7 @@ class ProjAccessor:
         indexes = _obj.xindexes
 
         for spatial_ref, coord_names in spatial_ref_coords.items():
-            crs = self(spatial_ref).crs
+            crs = self._get_crs_index(spatial_ref).crs
 
             map_indexes = []
             map_indexes_coords = set()
@@ -393,3 +410,85 @@ class ProjAccessor:
                 _obj = _obj.assign_coords(xr.Coordinates(new_vars, {n: new_index for n in vars}))
 
         return _obj
+
+    def _update_crs_info(
+        self, spatial_ref: Hashable | None, func: Callable[[xr.Variable, CRSIndex], None]
+    ) -> xr.DataArray | xr.Dataset:
+        if spatial_ref is None:
+            spatial_ref_coords = list(self.crs_indexes)
+        else:
+            spatial_ref_coords = [spatial_ref]
+
+        _obj = self._obj.copy(deep=False)
+
+        for coord_name in spatial_ref_coords:
+            index = self._get_crs_index(coord_name)
+            var = self._obj[coord_name].variable.copy(deep=False)
+            func(var, index)
+            _obj = _obj.assign_coords(xr.Coordinates({coord_name: var}, {coord_name: index}))
+
+        return _obj
+
+    def write_crs_info(
+        self,
+        spatial_ref: Hashable | None = None,
+        func: Callable[[pyproj.CRS], dict[str, Any]] = format_compact_cf,
+    ) -> xr.DataArray | xr.Dataset:
+        """Write CRS information as attributes to one or all spatial
+        reference coordinates.
+
+        Parameters
+        ----------
+        spatial_ref : Hashable, optional
+            The name of a :term:`spatial reference coordinate`. If not provided (default),
+            CRS information will be written to all spatial reference coordinates found in
+            the Dataset or DataArray. Each spatial reference coordinate must already have
+            a :py:class:`~xproj.CRSIndex` associated.
+        func : callable, optional
+            Any callable used to format CRS information as coordinate variable attributes.
+            The default function adds a ``crs_wkt`` attribute for compatibility with
+            CF conventions.
+
+        Returns
+        -------
+        Dataset or DataArray
+            A new Dataset or DatArray object with attributes updated for one or all
+            spatial reference coordinates.
+
+        See Also
+        --------
+        ~xproj.format_compact_cf
+        ~xproj.format_full_cf_gdal
+        Dataset.proj.clear_crs_info
+        DataArray.proj.clear_crs_info
+
+        """
+        return self._update_crs_info(
+            spatial_ref, lambda var, index: var.attrs.update(func(index.crs))
+        )
+
+    def clear_crs_info(self, spatial_ref: Hashable | None = None) -> xr.DataArray | xr.Dataset:
+        """Convenient method to clear all attributes of one or all spatial
+        reference coordinates.
+
+        Parameters
+        ----------
+        spatial_ref : Hashable, optional
+            The name of a :term:`spatial reference coordinate`. If not provided (default),
+            CRS information will be cleared for all spatial reference coordinates found in
+            the Dataset or DataArray. Each spatial reference coordinate must already have
+            a :py:class:`~xproj.CRSIndex` associated.
+
+        Returns
+        -------
+        Dataset or DataArray
+            A new Dataset or DatArray object with attributes cleared for one or all
+            spatial reference coordinates.
+
+        See Also
+        --------
+        Dataset.proj.write_crs_info
+        DataArray.proj.write_crs_info
+
+        """
+        return self._update_crs_info(spatial_ref, lambda var, _: var.attrs.clear())

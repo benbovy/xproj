@@ -36,6 +36,8 @@ To enable it, be sure to import ``xproj`` after ``xarray``:
 
    Dataset.proj.assign_crs
    Dataset.proj.map_crs
+   Dataset.proj.write_crs_info
+   Dataset.proj.clear_crs_info
 
 
 DataArray ``proj`` extension
@@ -67,6 +69,8 @@ To enable it, be sure to import ``xproj`` after ``xarray``:
 
    DataArray.proj.assign_crs
    DataArray.proj.map_crs
+   DataArray.proj.write_crs_info
+   DataArray.proj.clear_crs_info
 
 .. currentmodule:: xproj
 

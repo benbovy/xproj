@@ -96,9 +96,16 @@ ds_wgs84.geo.crs
 
 ## CRS-aware Xarray index
 
-Here below is a basic example of a {term}`CRS-aware index`, here a custom Xarray
-index that adds some CRS-dependent functionality on top of Xarray's default
-`PandasIndex`.
+Here below is a basic example of a {term}`CRS-aware index`, i.e., a custom
+Xarray index that adds some CRS-dependent functionality (via the {term}`proj
+index interface`) on top of Xarray's default `PandasIndex`.
+
+:::{note}
+The {class}`~xproj.ProjIndexMixin` class can be used to mark an Xarray index as
+formally implementing the {term}`proj index interface`. However, XProj doesn't
+require an Xarray index to explicitly inherit from this mixin class to be
+recognized as CRS-aware.
+:::
 
 ```{code-cell} ipython3
 import warnings
