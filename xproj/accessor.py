@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Hashable, Iterable, Mapping
+from collections.abc import Callable, Hashable, Iterable, Mapping
 from typing import Any, Literal, TypeVar, cast
 
 import pyproj
 import xarray as xr
 
+from xproj.crs_utils import format_compact_cf
 from xproj.index import CRSIndex
 from xproj.mixins import ProjIndexMixin
 from xproj.utils import Frozen, FrozenDict
@@ -397,5 +398,50 @@ class ProjAccessor:
                 new_index = index_update_crs_func(spatial_ref, crs)
                 new_vars = new_index.create_variables(vars)
                 _obj = _obj.assign_coords(xr.Coordinates(new_vars, {n: new_index for n in vars}))
+
+        return _obj
+
+    def write_crs_info(
+        self,
+        spatial_ref: Hashable | None = None,
+        func: Callable[[pyproj.CRS], dict[str, Any]] = format_compact_cf,
+    ) -> xr.DataArray | xr.Dataset:
+        """Write CRS information as attributes to one or all spatial
+        reference coordinates.
+
+        Parameters
+        ----------
+        spatial_ref : Hashable, optional
+            The name of a :term:`spatial reference coordinate`. If not provided (default),
+            CRS information will be written to all spatial reference coordinates found in
+            the Dataset or DataArray. Each spatial reference coordinate must already have
+            a :py:class:`~xproj.CRSIndex` associated.
+        func : callable, optional
+            Any callable used to format CRS information as coordinate variable attributes.
+            The default function adds a ``crs_wkt`` attribute for compatibility with
+            CF conventions.
+
+        Returns
+        -------
+        Dataset or DataArray
+            A new Dataset or DatArray object with attributes updated for one or all
+            spatial reference coordinates.
+
+        See Also
+        --------
+        ~xproj.format_compact_cf
+        ~xproj.format_full_cf_gdal
+
+        """
+        if spatial_ref is None:
+            spatial_ref_coords = list(self.crs_indexes)
+        else:
+            spatial_ref_coords = [spatial_ref]
+
+        _obj = self._obj.copy(deep=False)
+
+        for coord_name in spatial_ref_coords:
+            crs = self._get_crs_index(coord_name).crs
+            _obj[coord_name] = _obj[coord_name].assign_attrs(func(crs))
 
         return _obj

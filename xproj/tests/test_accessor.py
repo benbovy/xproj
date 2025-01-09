@@ -241,3 +241,21 @@ def test_accessor_map_crs_multicoord_index() -> None:
 
     with pytest.raises(ValueError, match="missing indexed coordinate"):
         ds.proj.map_crs(spatial_ref=["x"])
+
+
+def test_accessor_write_crs_info(spatial_xr_obj) -> None:
+    obj_with_attrs = spatial_xr_obj.proj.write_crs_info()
+    assert "crs_wkt" in obj_with_attrs.spatial_ref.attrs
+
+    # test attrs unchanged in original object
+    assert "crs_wkt" not in spatial_xr_obj.spatial_ref.attrs
+
+    # test spatial ref coordinate provided explicitly
+    obj_with_attrs2 = spatial_xr_obj.proj.write_crs_info("spatial_ref")
+    assert "crs_wkt" in obj_with_attrs2.spatial_ref.attrs
+
+    # test alternative func
+    obj_with_attrs3 = spatial_xr_obj.proj.write_crs_info(func=xproj.format_full_cf_gdal)
+    assert "crs_wkt" in obj_with_attrs3.spatial_ref.attrs
+    assert "spatial_ref" in obj_with_attrs3.spatial_ref.attrs
+    assert "grid_mapping_name" in obj_with_attrs3.spatial_ref.attrs
