@@ -167,6 +167,17 @@ class ProjAccessor:
 
         return FrozenDict(self._crs_aware_indexes)
 
+    def _get_crs_index(self, coord_name: Hashable) -> CRSIndex:
+        if coord_name not in self.crs_indexes:
+            if coord_name not in self._obj.coords:
+                raise KeyError(f"no coordinate {coord_name!r} found in Dataset or DataArray")
+            elif coord_name not in self._obj.xindexes:
+                raise ValueError(f"coordinate {coord_name!r} has no index")
+            else:
+                raise ValueError(f"coordinate {coord_name!r} index is not a CRSIndex")
+
+        return self.crs_indexes[coord_name]
+
     def __call__(self, coord_name: Hashable):
         """Select a given CRS by coordinate name.
 
@@ -183,19 +194,14 @@ class ProjAccessor:
             A proxy accessor for a single CRS.
 
         """
+        crs: pyproj.CRS
+
         if coord_name in self.crs_aware_indexes:
-            index = self.crs_aware_indexes[coord_name]
-            return CRSProxy(self._obj, coord_name, index._proj_get_crs())  # type: ignore
+            crs = self.crs_aware_indexes[coord_name]._proj_get_crs()  # type: ignore
+        else:
+            crs = self._get_crs_index(coord_name).crs
 
-        if coord_name not in self.crs_indexes:
-            if coord_name not in self._obj.coords:
-                raise KeyError(f"no coordinate {coord_name!r} found in Dataset or DataArray")
-            elif coord_name not in self._obj.xindexes:
-                raise ValueError(f"coordinate {coord_name!r} has no index")
-            else:
-                raise ValueError(f"coordinate {coord_name!r} index is not a CRSIndex")
-
-        return CRSProxy(self._obj, coord_name, self.crs_indexes[coord_name].crs)
+        return CRSProxy(self._obj, coord_name, crs)
 
     def assert_one_crs_index(self):
         """Raise an `AssertionError` if no or multiple CRS-indexed coordinates
@@ -333,7 +339,7 @@ class ProjAccessor:
         indexes = _obj.xindexes
 
         for spatial_ref, coord_names in spatial_ref_coords.items():
-            crs = self(spatial_ref).crs
+            crs = self._get_crs_index(spatial_ref).crs
 
             map_indexes = []
             map_indexes_coords = set()
