@@ -256,6 +256,9 @@ def test_accessor_write_crs_info(spatial_xr_obj) -> None:
     obj_with_attrs = spatial_xr_obj.proj.write_crs_info()
     assert "crs_wkt" in obj_with_attrs.spatial_ref.attrs
 
+    # test CRSIndex is preserved
+    assert "spatial_ref" in obj_with_attrs.xindexes
+
     # test attrs unchanged in original object
     assert "crs_wkt" not in spatial_xr_obj.spatial_ref.attrs
 
@@ -268,3 +271,20 @@ def test_accessor_write_crs_info(spatial_xr_obj) -> None:
     assert "crs_wkt" in obj_with_attrs3.spatial_ref.attrs
     assert "spatial_ref" in obj_with_attrs3.spatial_ref.attrs
     assert "grid_mapping_name" in obj_with_attrs3.spatial_ref.attrs
+
+
+def test_accessor_clear_crs_info(spatial_xr_obj) -> None:
+    obj_with_attrs = spatial_xr_obj.proj.write_crs_info()
+
+    cleared = obj_with_attrs.proj.clear_crs_info()
+    assert not len(cleared.spatial_ref.attrs)
+
+    # test CRSIndex is preserved
+    assert "spatial_ref" in cleared.xindexes
+
+    # test attrs unchanged in original object
+    assert len(obj_with_attrs.spatial_ref.attrs) > 0
+
+    # test spatial ref coordinate provided explicitly
+    cleared2 = obj_with_attrs.proj.clear_crs_info("spatial_ref")
+    assert not len(cleared2.spatial_ref.attrs)

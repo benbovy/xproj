@@ -441,6 +441,8 @@ class ProjAccessor:
         --------
         ~xproj.format_compact_cf
         ~xproj.format_full_cf_gdal
+        Dataset.proj.clear_crs_info
+        DataArray.proj.clear_crs_info
 
         """
         if spatial_ref is None:
@@ -451,7 +453,48 @@ class ProjAccessor:
         _obj = self._obj.copy(deep=False)
 
         for coord_name in spatial_ref_coords:
-            crs = self._get_crs_index(coord_name).crs
-            _obj[coord_name] = _obj[coord_name].assign_attrs(func(crs))
+            index = self._get_crs_index(coord_name)
+            var = self._obj[coord_name].variable.copy(deep=False)
+            var.attrs.update(func(index.crs))
+            _obj = _obj.assign_coords(xr.Coordinates({coord_name: var}, {coord_name: index}))
+
+        return _obj
+
+    def clear_crs_info(self, spatial_ref: Hashable | None = None) -> xr.DataArray | xr.Dataset:
+        """Convenient method to clear all attributes of one or all spatial
+        reference coordinates.
+
+        Parameters
+        ----------
+        spatial_ref : Hashable, optional
+            The name of a :term:`spatial reference coordinate`. If not provided (default),
+            CRS information will be cleared for all spatial reference coordinates found in
+            the Dataset or DataArray. Each spatial reference coordinate must already have
+            a :py:class:`~xproj.CRSIndex` associated.
+
+        Returns
+        -------
+        Dataset or DataArray
+            A new Dataset or DatArray object with attributes cleared for one or all
+            spatial reference coordinates.
+
+        See Also
+        --------
+        Dataset.proj.write_crs_info
+        DataArray.proj.write_crs_info
+
+        """
+        if spatial_ref is None:
+            spatial_ref_coords = list(self.crs_indexes)
+        else:
+            spatial_ref_coords = [spatial_ref]
+
+        _obj = self._obj.copy(deep=False)
+
+        for coord_name in spatial_ref_coords:
+            index = self._get_crs_index(coord_name)
+            var = self._obj[coord_name].variable.copy(deep=False)
+            var.attrs.clear()
+            _obj = _obj.assign_coords(xr.Coordinates({coord_name: var}, {coord_name: index}))
 
         return _obj
