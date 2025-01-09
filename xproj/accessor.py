@@ -412,7 +412,7 @@ class ProjAccessor:
         return _obj
 
     def _update_crs_info(
-        self, spatial_ref: Hashable | None, func: Callable[[xr.Variable, CRSIndex]]
+        self, spatial_ref: Hashable | None, func: Callable[[xr.Variable, CRSIndex], None]
     ) -> xr.DataArray | xr.Dataset:
         if spatial_ref is None:
             spatial_ref_coords = list(self.crs_indexes)
