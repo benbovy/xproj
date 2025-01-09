@@ -214,6 +214,7 @@ def test_accessor_map_crs_multicoord_index() -> None:
     class RasterIndex(Index):
         def __init__(self, xy_indexes):
             self._xyindexes = xy_indexes
+            self._crs = None
 
         @classmethod
         def from_variables(cls, variables, *, options):
@@ -226,7 +227,7 @@ def test_accessor_map_crs_multicoord_index() -> None:
         def _proj_get_crs(self):
             return self._crs
 
-        def _proj_set_crs(self, crs_coord_name, crs):
+        def _proj_set_crs(self, spatial_ref, crs):
             self._crs = crs
             return self
 
