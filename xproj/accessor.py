@@ -169,11 +169,21 @@ class ProjAccessor:
         return FrozenDict(self._crs_aware_indexes)
 
     def _get_crs_index(self, coord_name: Hashable) -> CRSIndex:
+        # Get a nice error message when trying to access a spatial reference
+        # coordinate with a CRSIndex using an arbitrary name.
+
         if coord_name not in self.crs_indexes:
             if coord_name not in self._obj.coords:
                 raise KeyError(f"no coordinate {coord_name!r} found in Dataset or DataArray")
+            elif self._obj.coords[coord_name].ndim != 0:
+                raise ValueError(f"coordinate {coord_name!r} is not a scalar coordinate")
             elif coord_name not in self._obj.xindexes:
-                raise ValueError(f"coordinate {coord_name!r} has no index")
+                raise ValueError(
+                    f"coordinate {coord_name!r} has no index. It must have a CRSIndex associated "
+                    f"(e.g., via Dataset.proj.assign_crs({coord_name}=...) or "
+                    f"DataArray.proj.assign_crs({coord_name}=...)) to be used as "
+                    "a spatial reference coordinate with xproj, "
+                )
             else:
                 raise ValueError(f"coordinate {coord_name!r} index is not a CRSIndex")
 

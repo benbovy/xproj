@@ -102,16 +102,25 @@ def test_accessor_callable_crs_aware_index() -> None:
 
 
 def test_accessor_callable_error(spatial_xr_obj) -> None:
-    obj = spatial_xr_obj.assign_coords(x=[1, 2], foo=("x", [3, 4]))
+    class DummyIndex(xr.Index):
+        @classmethod
+        def from_variables(cls, variables, *, options):
+            return cls()
+
+    obj = spatial_xr_obj.assign_coords(x=[1, 2], foo=("x", [3, 4]), a=0, b=0)
+    obj = obj.set_xindex("b", DummyIndex)
 
     with pytest.raises(KeyError, match="no coordinate 'bar' found"):
         obj.proj("bar")
 
-    with pytest.raises(ValueError, match="coordinate 'foo' has no index"):
+    with pytest.raises(ValueError, match="coordinate 'foo' is not a scalar coordinate"):
         obj.proj("foo")
 
-    with pytest.raises(ValueError, match="coordinate 'x' index is not a CRSIndex"):
-        obj.proj("x")
+    with pytest.raises(ValueError, match="coordinate 'a' has no index"):
+        obj.proj("a")
+
+    with pytest.raises(ValueError, match="coordinate 'b' index is not a CRSIndex"):
+        obj.proj("b")
 
 
 def test_accessor_assert_one_index() -> None:
