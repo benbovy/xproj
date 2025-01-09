@@ -182,7 +182,7 @@ class ProjAccessor:
                     f"coordinate {coord_name!r} has no index. It must have a CRSIndex associated "
                     f"(e.g., via Dataset.proj.assign_crs({coord_name}=...) or "
                     f"DataArray.proj.assign_crs({coord_name}=...)) to be used as "
-                    "a spatial reference coordinate with xproj, "
+                    "a spatial reference coordinate with xproj."
                 )
             else:
                 raise ValueError(f"coordinate {coord_name!r} index is not a CRSIndex")
