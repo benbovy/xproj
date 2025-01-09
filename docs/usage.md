@@ -81,6 +81,22 @@ reference coordinate` to the `.proj` accessor:
 ds_wgs84.proj("spatial_ref").crs
 ```
 
+## Writing CRS information
+
+Before saving the dataset to a given format, it may be useful to write the CRS
+information as coordinate metadata (attributes) so it could be later loaded by
+other tools like GDAL that understand this metadata. This can be done with
+{meth}`xarray.Dataset.proj.write_crs_info`:
+
+```{code-cell}
+ds_info = ds_wgs84.proj.write_crs_info()
+
+ds_info.spatial_ref
+```
+
+Conversely, the attributes of the spatial reference coordinates can be cleared
+via {meth}`xarray.Dataset.proj.clear_crs_info`.
+
 ## CRS-aware alignment
 
 One of the main motivations of associating a {class}`~xproj.CRSIndex` with a

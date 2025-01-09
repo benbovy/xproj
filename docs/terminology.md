@@ -13,11 +13,13 @@ Spatial reference coordinate
    An Xarray scalar {term}`coordinate` that usually declares a specific
    {term}`CRS` via its metadata. CF conventions use the term [grid mapping
    variable](https://cfconventions.org/Data/cf-conventions/cf-conventions-1.12/cf-conventions.html#grid-mappings-and-projections)
-   for the same concept. XProj associates a {class}`~xproj.CRSIndex` to such
-   coordinate. The name and the value of the coordinate is arbitrary, although
-   ``spatial_ref`` is a common name used by default in
-   [rioxarray](https://corteva.github.io/rioxarray) and
-   [odc-geo](https://odc-geo.readthedocs.io) (following GDAL's NetCDF driver).
+   for almost the same concept (the only difference is that a *grid mapping
+   variable* is a data variable, not a coordinate, although Xarray's builtin CF
+   decoders automatically promote it as a coordinate). XProj associates a
+   {class}`~xproj.CRSIndex` to such coordinate. The name and the value of the
+   coordinate is arbitrary, although ``spatial_ref`` is a common name used by
+   default in [rioxarray](https://corteva.github.io/rioxarray) and
+   [odc-geo](https://odc-geo.readthedocs.io) (inspired by GDAL).
 
 CRS-aware index
    Any custom {class}`xarray.Index` that implements data selection, alignment
