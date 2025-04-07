@@ -24,7 +24,7 @@ def either_dict_or_kwargs(
     """
     if positional and keyword:
         raise ValueError(
-            "Cannot specify both keyword and positional arguments to " f"'.proj.{func_name}'."
+            f"Cannot specify both keyword and positional arguments to '.proj.{func_name}'."
         )
     if positional is None or positional == {}:
         return cast(Mapping[Hashable, Any], keyword)
