@@ -61,3 +61,10 @@ def test_crsindex_equals() -> None:
 
     idx4 = CRSIndex(pyproj.CRS.from_user_input("epsg:4978"))
     assert idx1.equals(idx4) is False
+
+
+def test_xarray_from_variables() -> None:
+    ds = xr.Dataset()
+    attrs = pyproj.CRS.from_user_input("epsg:4326").to_cf()
+    ds.coords["spatial_ref"] = (tuple(), 0, attrs)
+    ds.set_xindex("spatial_ref", CRSIndex)
