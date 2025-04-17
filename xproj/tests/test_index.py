@@ -79,3 +79,8 @@ def test_xarray_from_variables() -> None:
 
     with pytest.raises(ValueError, match="CRS could not"):
         indexed = ds.set_xindex("spatial_ref", CRSIndex)
+
+    # no attrs
+    ds.coords["spatial_ref"] = (tuple(), 0, {"spatial_ref": attrs["crs_wkt"]})
+    indexed = ds.set_xindex("spatial_ref", CRSIndex)
+    assert isinstance(next(iter(indexed.xindexes.values())), CRSIndex)
