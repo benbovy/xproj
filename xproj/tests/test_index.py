@@ -65,6 +65,17 @@ def test_crsindex_equals() -> None:
 
 def test_xarray_from_variables() -> None:
     ds = xr.Dataset()
-    attrs = pyproj.CRS.from_user_input("epsg:4326").to_cf()
+    crs = pyproj.CRS.from_user_input("epsg:4326")
+    attrs = crs.to_cf()
+
     ds.coords["spatial_ref"] = (tuple(), 0, attrs)
-    ds.set_xindex("spatial_ref", CRSIndex)
+    indexed = ds.set_xindex("spatial_ref", CRSIndex)
+    assert isinstance(next(iter(indexed.xindexes.values())), CRSIndex)
+
+    # no attrs
+    ds.coords["spatial_ref"] = (tuple(), 0, {})
+    indexed = ds.set_xindex("spatial_ref", CRSIndex, crs=crs)
+    assert isinstance(next(iter(indexed.xindexes.values())), CRSIndex)
+
+    with pytest.raises(ValueError, match="CRS could not"):
+        indexed = ds.set_xindex("spatial_ref", CRSIndex)

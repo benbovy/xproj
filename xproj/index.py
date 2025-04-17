@@ -58,18 +58,21 @@ class CRSIndex(Index):
         if len(variables) != 1:
             raise ValueError("can only create a CRSIndex from one scalar variable")
 
+        varname = next(iter(variables.keys()))
         var = next(iter(variables.values()))
 
         if var.ndim != 0:
             raise ValueError("can only create a CRSIndex from one scalar variable")
 
-        # TODO: how to deal with different CRS in var attribute vs. build option?
-        crs = var.attrs.get("spatial_ref", var.attrs.get("crs_wkt", options.get("crs", None)))
-
-        if crs is None:
+        try:
+            if "crs" in options:
+                crs = pyproj.CRS.from_user_input(options["crs"])
+            else:
+                crs = pyproj.CRS.from_cf(var.attrs)
+        except pyproj.crs.CRSError:
             raise ValueError(
-                "spatial_ref attribute not dected detected on provided variable {varname!r}"
-                "Either add this attribute or pass a `crs` kwarg."
+                f"CRS could not be constructed from attrs on provided variable {varname!r}"
+                f"Either add appropriate attributes to {varname!r} or pass a `crs` kwarg."
             )
 
         return cls(crs)
