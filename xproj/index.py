@@ -58,17 +58,26 @@ class CRSIndex(Index):
         if len(variables) != 1:
             raise ValueError("can only create a CRSIndex from one scalar variable")
 
+        varname = next(iter(variables.keys()))
         var = next(iter(variables.values()))
 
         if var.ndim != 0:
             raise ValueError("can only create a CRSIndex from one scalar variable")
 
-        # TODO: how to deal with different CRS in var attribute vs. build option?
-        crs = var.attrs.get("spatial_ref", options["crs"])
+        try:
+            if "crs" in options:
+                crs = pyproj.CRS.from_user_input(options["crs"])
+            else:
+                crs = pyproj.CRS.from_cf(var.attrs)
+        except pyproj.crs.CRSError:
+            raise ValueError(
+                f"CRS could not be constructed from attrs on provided variable {varname!r}"
+                f"Either add appropriate attributes to {varname!r} or pass a `crs` kwarg."
+            )
 
         return cls(crs)
 
-    def equals(self, other: CRSIndex) -> bool:
+    def equals(self, other: Index) -> bool:
         if not isinstance(other, CRSIndex):
             return False
         if not self.crs == other.crs:
