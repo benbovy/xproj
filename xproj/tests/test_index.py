@@ -13,13 +13,32 @@ def test_crsindex_init() -> None:
 
 def test_create_crsindex() -> None:
     ds = xr.Dataset(coords={"spatial_ref": 0})
+    attrs = crs.to_cf()
 
-    # pass CRS via build option
-    crs = pyproj.CRS.from_user_input("epsg:4326")
-    ds_index = ds.set_xindex("spatial_ref", CRSIndex, crs=crs)
-    assert "spatial_ref" in ds_index.xindexes
-    assert isinstance(ds_index.xindexes["spatial_ref"], CRSIndex)
-    assert getattr(ds_index.xindexes["spatial_ref"], "crs") == crs
+    # pass CRS as build option (no attributes)
+    ds.coords["spatial_ref"] = (tuple(), 0, {})
+    indexed = ds.set_xindex("spatial_ref", CRSIndex, crs=crs)
+    assert "spatial_ref" in indexed.xindexes
+    assert isinstance(indexed.xindexes["spatial_ref"], CRSIndex)
+    assert getattr(indexed.xindexes["spatial_ref"], "crs") == crs
+
+    # pass CRS as CF attributes
+    ds.coords["spatial_ref"] = (tuple(), 0, attrs)
+    indexed = ds.set_xindex("spatial_ref", CRSIndex)
+    assert "spatial_ref" in indexed.xindexes
+    assert isinstance(indexed.xindexes["spatial_ref"], CRSIndex)
+    assert getattr(indexed.xindexes["spatial_ref"], "crs") == crs
+
+    # pass CRS as "spatial_ref" attribute (WKT) for GDAL compat
+    ds.coords["spatial_ref"] = (tuple(), 0, {"spatial_ref": attrs["crs_wkt"]})
+    indexed = ds.set_xindex("spatial_ref", CRSIndex)
+    assert "spatial_ref" in indexed.xindexes
+    assert isinstance(indexed.xindexes["spatial_ref"], CRSIndex)
+    assert getattr(indexed.xindexes["spatial_ref"], "crs") == crs
+
+    # no CRS attribute / option
+    with pytest.raises(ValueError, match="CRS could not be constructed from attrs"):
+        indexed = ds.set_xindex("spatial_ref", CRSIndex)
 
 
 def test_create_crsindex_error() -> None:
@@ -61,26 +80,3 @@ def test_crsindex_equals() -> None:
 
     idx4 = CRSIndex(pyproj.CRS.from_user_input("epsg:4978"))
     assert idx1.equals(idx4) is False
-
-
-def test_xarray_from_variables() -> None:
-    ds = xr.Dataset()
-    crs = pyproj.CRS.from_user_input("epsg:4326")
-    attrs = crs.to_cf()
-
-    ds.coords["spatial_ref"] = (tuple(), 0, attrs)
-    indexed = ds.set_xindex("spatial_ref", CRSIndex)
-    assert isinstance(next(iter(indexed.xindexes.values())), CRSIndex)
-
-    # no attrs
-    ds.coords["spatial_ref"] = (tuple(), 0, {})
-    indexed = ds.set_xindex("spatial_ref", CRSIndex, crs=crs)
-    assert isinstance(next(iter(indexed.xindexes.values())), CRSIndex)
-
-    with pytest.raises(ValueError, match="CRS could not"):
-        indexed = ds.set_xindex("spatial_ref", CRSIndex)
-
-    # no attrs
-    ds.coords["spatial_ref"] = (tuple(), 0, {"spatial_ref": attrs["crs_wkt"]})
-    indexed = ds.set_xindex("spatial_ref", CRSIndex)
-    assert isinstance(next(iter(indexed.xindexes.values())), CRSIndex)
