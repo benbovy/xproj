@@ -16,8 +16,12 @@ def test_create_crsindex() -> None:
     crs = pyproj.CRS.from_user_input("epsg:4326")
     attrs = crs.to_cf()
 
-    # pass CRS as build option (no attributes)
+    # no attribute
     ds.coords["spatial_ref"] = (tuple(), 0, {})
+    with pytest.raises(ValueError, match="CRS could not be constructed from attrs"):
+        indexed = ds.set_xindex("spatial_ref", CRSIndex)
+
+    # pass CRS as build option
     indexed = ds.set_xindex("spatial_ref", CRSIndex, crs=crs)
     assert "spatial_ref" in indexed.xindexes
     assert isinstance(indexed.xindexes["spatial_ref"], CRSIndex)
@@ -36,10 +40,6 @@ def test_create_crsindex() -> None:
     assert "spatial_ref" in indexed.xindexes
     assert isinstance(indexed.xindexes["spatial_ref"], CRSIndex)
     assert getattr(indexed.xindexes["spatial_ref"], "crs") == crs
-
-    # no CRS attribute / option
-    with pytest.raises(ValueError, match="CRS could not be constructed from attrs"):
-        indexed = ds.set_xindex("spatial_ref", CRSIndex)
 
 
 def test_create_crsindex_error() -> None:
