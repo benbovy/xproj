@@ -13,6 +13,7 @@ def test_crsindex_init() -> None:
 
 def test_create_crsindex() -> None:
     ds = xr.Dataset(coords={"spatial_ref": 0})
+    crs = pyproj.CRS.from_user_input("epsg:4326")
     attrs = crs.to_cf()
 
     # pass CRS as build option (no attributes)
