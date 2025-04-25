@@ -77,7 +77,7 @@ class CRSIndex(Index):
 
         return cls(crs)
 
-    def equals(self, other: CRSIndex) -> bool:
+    def equals(self, other: Index) -> bool:
         if not isinstance(other, CRSIndex):
             return False
         if not self.crs == other.crs:
